@@ -9,6 +9,7 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 struct MealPlannerView: View {
 
     @Environment(\.modelContext) private var context
@@ -222,6 +223,7 @@ struct PortionPickerContext: Identifiable {
 // MARK: - Food Picker
 
 /// Searchable catalogue with tier and category filters.
+@MainActor
 struct FoodPickerSheet: View {
 
     @Environment(\.modelContext) private var context
@@ -309,6 +311,7 @@ struct FoodPickerSheet: View {
 
 /// Ranked alternatives for a single ingredient, so the user can choose rather
 /// than accept the engine's top pick.
+@MainActor
 struct PortionSwapSheet: View {
 
     @Environment(\.dismiss) private var dismiss

@@ -12,6 +12,7 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 struct DashboardView: View {
 
     @Environment(\.modelContext) private var context
@@ -312,6 +313,7 @@ struct DashboardView: View {
 
 /// Confirmation sheet for a proposed swap. Shows the macro and cost effect side
 /// by side, because "cheaper" is only acceptable if the macros hold.
+@MainActor
 struct SwapReviewSheet: View {
 
     @Environment(\.dismiss) private var dismiss

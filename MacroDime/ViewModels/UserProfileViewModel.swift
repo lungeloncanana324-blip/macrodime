@@ -68,19 +68,26 @@ final class UserProfileViewModel {
     var goal: FitnessGoal = .fatLoss
     var activity: ActivityLevel = .lightlyActive
 
-    var budgetTier: BudgetTier = .strict {
-        didSet {
-            // Follow the tier default until the user takes ownership of the
-            // number, then leave their value alone.
-            guard !hasEditedBudget else { return }
-            dailyFoodBudget = budgetTier.defaultDailyAllowance
-        }
-    }
+    /// Changed through `selectBudgetTier(_:)`, never assigned directly.
+    ///
+    /// This deliberately carries no `didSet`. The `@Observable` macro rewrites
+    /// stored properties into computed ones backed by an observation registrar,
+    /// and a property cannot have both synthesised accessors and observers, so
+    /// the side effect lives in the method instead.
+    private(set) var budgetTier: BudgetTier = .strict
 
     var dailyFoodBudget: Double = BudgetTier.strict.defaultDailyAllowance
     private(set) var hasEditedBudget = false
 
-    /// Called by the budget stepper/slider so the tier default stops overwriting.
+    /// Switches tier, carrying that tier's default allowance across — until the
+    /// user edits the number themselves, after which their value stands.
+    func selectBudgetTier(_ tier: BudgetTier) {
+        budgetTier = tier
+        guard !hasEditedBudget else { return }
+        dailyFoodBudget = tier.defaultDailyAllowance
+    }
+
+    /// Called by the budget slider, which hands ownership of the number to the user.
     func budgetWasEdited(to value: Double) {
         hasEditedBudget = true
         dailyFoodBudget = max(value, 0)

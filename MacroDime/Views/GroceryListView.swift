@@ -13,6 +13,7 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 struct GroceryListView: View {
 
     @Environment(\.modelContext) private var context
@@ -232,6 +233,7 @@ struct GroceryListView: View {
 
 /// One checkable line. The whole row is the hit target — ticking things off
 /// happens one-handed, in a shop, usually in a hurry.
+@MainActor
 struct GroceryRow: View {
 
     let item: GroceryItem

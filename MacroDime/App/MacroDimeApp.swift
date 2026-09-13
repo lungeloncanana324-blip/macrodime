@@ -56,6 +56,7 @@ struct MacroDimeApp: App {
 // MARK: - Root
 
 /// Gates onboarding, then hosts the three main tabs.
+@MainActor
 struct RootView: View {
 
     @Environment(\.modelContext) private var context
@@ -78,6 +79,7 @@ struct RootView: View {
 
 // MARK: - Tabs
 
+@MainActor
 struct MainTabView: View {
 
     let profile: UserProfile
@@ -102,6 +104,7 @@ struct MainTabView: View {
 // MARK: - Settings
 
 /// Profile review and re-entry into the onboarding wizard.
+@MainActor
 struct SettingsView: View {
 
     @Environment(\.modelContext) private var context

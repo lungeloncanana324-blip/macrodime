@@ -14,6 +14,7 @@ import SwiftData
 import PhotosUI
 import UIKit   // `UIImage`, for rendering the picked photo back into the form
 
+@MainActor
 struct LogMeasurementSheet: View {
 
     @Environment(\.modelContext) private var context

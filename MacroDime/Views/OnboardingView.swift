@@ -12,6 +12,7 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 struct OnboardingView: View {
 
     @Environment(\.modelContext) private var context
@@ -325,7 +326,7 @@ struct OnboardingView: View {
                     systemImage: tier == .strict ? "banknote.fill" : "basket.fill",
                     isSelected: model.budgetTier == tier
                 ) {
-                    withAnimation(.snappy) { model.budgetTier = tier }
+                    withAnimation(.snappy) { model.selectBudgetTier(tier) }
                 }
             }
 

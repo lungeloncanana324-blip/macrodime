@@ -58,6 +58,7 @@ extension MacroAxis {
 /// Over-target is shown explicitly — the ring fills, then a second, darker arc
 /// sweeps the overflow. Clamping at 100% would hide exactly the state the user
 /// most needs to see.
+@MainActor
 struct MacroRing: View {
     let progress: Double
     let tint: Color
@@ -91,6 +92,7 @@ struct MacroRing: View {
 }
 
 /// Ring plus the label and numbers that make it readable without colour.
+@MainActor
 struct MacroRingStat: View {
     let axis: MacroAxis
     let consumed: Double
@@ -140,6 +142,7 @@ struct MacroRingStat: View {
 
 /// Horizontal spend-against-allowance bar. Turns red the moment spend exceeds
 /// the allowance, and states the overage in words as well as colour.
+@MainActor
 struct BudgetMeter: View {
     let spent: Double
     let allowance: Double
@@ -205,6 +208,7 @@ struct BudgetMeter: View {
 
 /// Standard grouped card. One definition so corner radius, padding and
 /// background never drift between screens.
+@MainActor
 struct CardContainer<Content: View>: View {
     var padding: CGFloat = 16
     @ViewBuilder var content: Content
@@ -218,6 +222,7 @@ struct CardContainer<Content: View>: View {
 }
 
 /// Small labelled metric, used in grids.
+@MainActor
 struct StatTile: View {
     let title: String
     let value: String
@@ -254,6 +259,7 @@ struct StatTile: View {
 // MARK: - Chips
 
 /// Price-tier chip, e.g. `$` or `$$`.
+@MainActor
 struct TierChip: View {
     let tier: BudgetTier
 
@@ -273,6 +279,7 @@ struct TierChip: View {
 }
 
 /// Selectable option row used throughout onboarding.
+@MainActor
 struct SelectableRow: View {
     let title: String
     let subtitle: String
