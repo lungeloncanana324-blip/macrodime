@@ -26,6 +26,15 @@ import PackageDescription
 
 let package = Package(
     name: "MacroDime",
+    // Required. Without this SwiftPM targets a very old macOS when building on
+    // a Mac, and `DisplayFormat` fails to compile: `Locale.current.currency` is
+    // macOS 13+, and the `.formatted(.currency/.number/.percent)` styles are
+    // macOS 12+. Linux has no availability model, which is exactly why the same
+    // code built there and broke on the first CI run.
+    platforms: [
+        .iOS(.v17),
+        .macOS(.v13)
+    ],
     products: [
         .library(name: "MacroDime", targets: ["MacroDime"])
     ],

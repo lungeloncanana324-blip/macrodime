@@ -5,15 +5,18 @@ name: iOS
 # or Linux, without owning a Mac.
 #
 # Simulator builds need no code signing, so this runs with no Apple Developer
-# account and no certificates — which makes it the cheapest way to find and fix
-# compile errors before paying for anything.
+# account and no certificates — the cheapest way to find and fix compile errors
+# before paying for anything.
+#
+# Every step runs even when an earlier one fails, and the job is failed at the
+# end instead. A CI round trip costs ~10 minutes of wall clock, so one run
+# should surface every problem at once rather than stopping at the first.
 
 on:
   push:
   pull_request:
   workflow_dispatch:
 
-# Don't let pushes pile up; macOS minutes bill at 10x on private repos.
 concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
@@ -22,7 +25,7 @@ jobs:
   build:
     name: Build app + run tests
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
@@ -31,21 +34,36 @@ jobs:
         run: |
           xcodebuild -version
           swift --version
+          echo "Available simulators:"
+          xcrun simctl list devices available | grep -E "iPhone" | head -5
 
-      # ── The engines. Fast, and they already pass on Linux, so a failure here
-      #    means something environmental rather than a real regression.
+      # ── The engines. These already pass on Linux, so a failure here is a
+      #    platform difference (availability, Foundation gaps), not a regression.
       - name: Test the pure engines (SwiftPM)
-        run: swift test
+        id: spm
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee swift.log
 
       - name: Install XcodeGen
+        if: always()
         run: brew install xcodegen
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        id: xcodegen
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodegen generate 2>&1 | tee xcodegen.log
 
-      # ── The part that has never compiled. `-quiet` is deliberately NOT used:
-      #    on the first runs we want every diagnostic, not a summary.
+      # ── The part that has never compiled. No `-quiet`: on early runs we want
+      #    every diagnostic, not a summary.
       - name: Build for simulator
+        id: xcbuild
+        if: always() && steps.xcodegen.outcome == 'success'
+        continue-on-error: true
         run: |
           set -o pipefail
           xcodebuild build \
@@ -54,9 +72,13 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            | tee build.log
+            2>&1 | tee build.log
 
+      # Only worth the minutes if the app actually compiled.
       - name: Run app tests in the simulator
+        id: xctest
+        if: always() && steps.xcbuild.outcome == 'success'
+        continue-on-error: true
         run: |
           set -o pipefail
           xcodebuild test \
@@ -64,21 +86,44 @@ jobs:
             -scheme MacroDime \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             CODE_SIGNING_ALLOWED=NO \
-            | tee test.log
+            2>&1 | tee test.log
 
-      # ── Collect every error in one place, so a single CI round trip yields a
-      #    full fix list rather than one error at a time.
+      # ── One consolidated list of every diagnostic, in the job summary so it
+      #    can be read without downloading artifacts.
       - name: Summarise diagnostics
         if: always()
         run: |
-          echo "## Compiler diagnostics" >> "$GITHUB_STEP_SUMMARY"
-          if grep -hE "(error|warning):" build.log test.log 2>/dev/null | sort -u > diags.txt && [ -s diags.txt ]; then
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            head -100 diags.txt >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "None." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "## Step outcomes"
+            echo ""
+            echo "| Step | Result |"
+            echo "| --- | --- |"
+            echo "| SwiftPM engine tests | ${{ steps.spm.outcome }} |"
+            echo "| XcodeGen | ${{ steps.xcodegen.outcome }} |"
+            echo "| xcodebuild build | ${{ steps.xcbuild.outcome }} |"
+            echo "| xcodebuild test | ${{ steps.xctest.outcome }} |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          grep -hE "(error|warning): " swift.log xcodegen.log build.log test.log 2>/dev/null \
+            | sed 's|/Users/runner/work/macrodime/macrodime/||' \
+            | sort -u > diags.txt || true
+
+          ERRS=$(grep -c "error: " diags.txt 2>/dev/null || echo 0)
+          {
+            echo "## Diagnostics ($ERRS errors)"
+            echo ""
+            if [ -s diags.txt ]; then
+              echo '```'
+              head -150 diags.txt
+              echo '```'
+            else
+              echo "None."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "----- DIAGNOSTICS -----"
+          cat diags.txt 2>/dev/null || echo "none"
 
       - name: Upload logs
         if: always()
@@ -86,6 +131,20 @@ jobs:
         with:
           name: build-logs
           path: |
+            swift.log
+            xcodegen.log
             build.log
             test.log
+            diags.txt
           if-no-files-found: ignore
+
+      # ── Honest job status, since the steps above swallow their failures.
+      - name: Fail if anything failed
+        if: always()
+        run: |
+          FAILED=0
+          for r in "${{ steps.spm.outcome }}" "${{ steps.xcodegen.outcome }}" \
+                   "${{ steps.xcbuild.outcome }}" "${{ steps.xctest.outcome }}"; do
+            [ "$r" = "failure" ] && FAILED=1
+          done
+          exit $FAILED
