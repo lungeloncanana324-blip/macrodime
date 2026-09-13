@@ -1,0 +1,26 @@
+# Written on Windows, compiled on macOS. Without this, every file lands in the
+# repo with CRLF endings and the CI runner sees a diff on checkout — plus Git
+# prints a "LF will be replaced by CRLF" warning on every single commit.
+#
+# Normalise everything to LF in the repository. Working copies on Windows are
+# unaffected for these types, since Swift/YAML/Markdown tooling handles LF fine.
+
+* text=auto eol=lf
+
+*.swift   text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.plist   text eol=lf
+*.sh      text eol=lf
+
+# Xcode project files, if one is ever committed (it should not be — it is
+# generated from project.yml).
+*.pbxproj text eol=lf -merge=union
+
+# Binary, never touch
+*.png     binary
+*.jpg     binary
+*.pdf     binary
+*.xcassets/** -text
