@@ -164,6 +164,15 @@ science and the swap algorithm can be verified on Linux or in CI. `App/`, `Views
 SwiftUI, SwiftData and UIKit, which are Apple-only and closed source, so they
 build in Xcode and nowhere else.
 
+### The app, without a Mac
+
+Apple requires macOS to compile iOS. You do not have to *own* one — CI rents a
+Mac per build. `project.yml` defines the Xcode project as text so it can be
+generated on a runner, and `.github/workflows/ios.yml` builds the app for the
+simulator, which needs no code signing and therefore no Apple account.
+
+See **BUILDING-WITHOUT-A-MAC.md** for the full path to TestFlight.
+
 ### The app, in Xcode
 
 There is no `.xcodeproj` in this repo — these are source files. To build:

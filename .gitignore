@@ -11,3 +11,6 @@ DerivedData/
 
 # macOS
 .DS_Store
+
+# XcodeGen output — derived from project.yml, never commit
+*.xcodeproj/

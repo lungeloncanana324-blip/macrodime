@@ -1,0 +1,91 @@
+name: iOS
+
+# Builds the full app on a hosted macOS runner. This is the whole point of the
+# file: it compiles the SwiftUI/SwiftData half that cannot be built on Windows
+# or Linux, without owning a Mac.
+#
+# Simulator builds need no code signing, so this runs with no Apple Developer
+# account and no certificates — which makes it the cheapest way to find and fix
+# compile errors before paying for anything.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Don't let pushes pile up; macOS minutes bill at 10x on private repos.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build app + run tests
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # ── The engines. Fast, and they already pass on Linux, so a failure here
+      #    means something environmental rather than a real regression.
+      - name: Test the pure engines (SwiftPM)
+        run: swift test
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # ── The part that has never compiled. `-quiet` is deliberately NOT used:
+      #    on the first runs we want every diagnostic, not a summary.
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project MacroDime.xcodeproj \
+            -scheme MacroDime \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log
+
+      - name: Run app tests in the simulator
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project MacroDime.xcodeproj \
+            -scheme MacroDime \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee test.log
+
+      # ── Collect every error in one place, so a single CI round trip yields a
+      #    full fix list rather than one error at a time.
+      - name: Summarise diagnostics
+        if: always()
+        run: |
+          echo "## Compiler diagnostics" >> "$GITHUB_STEP_SUMMARY"
+          if grep -hE "(error|warning):" build.log test.log 2>/dev/null | sort -u > diags.txt && [ -s diags.txt ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            head -100 diags.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "None." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build.log
+            test.log
+          if-no-files-found: ignore

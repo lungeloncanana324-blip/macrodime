@@ -1,0 +1,86 @@
+# codemagic.yaml
+#
+# Alternative to the GitHub Actions workflow, for when you reach the point of
+# shipping to TestFlight. Codemagic manages code signing from an App Store
+# Connect API key, which removes the fiddliest part of releasing without a Mac.
+#
+# Set up at codemagic.io: connect the repo, then add the integration named below.
+
+workflows:
+
+  # ── Stage 1: compile and test. No signing, no Apple account needed. ────────
+  build-only:
+    name: MacroDime — build & test
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - name: Test the pure engines
+        script: swift test
+      - name: Generate the Xcode project
+        script: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build for simulator
+        script: |
+          xcodebuild build \
+            -project MacroDime.xcodeproj \
+            -scheme MacroDime \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Test in simulator
+        script: |
+          xcodebuild test \
+            -project MacroDime.xcodeproj \
+            -scheme MacroDime \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log
+
+  # ── Stage 2: signed build straight to TestFlight. Needs the $99 membership. ─
+  testflight:
+    name: MacroDime — TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      # Create this in Codemagic → Teams → Integrations → App Store Connect,
+      # using an API key generated at appstoreconnect.apple.com.
+      app_store_connect: MacroDime ASC Key
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.lungelo.macrodime
+      vars:
+        BUNDLE_ID: com.lungelo.macrodime
+    scripts:
+      - name: Generate the Xcode project
+        script: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Set build number from Codemagic's counter
+        script: |
+          agvtool new-version -all $(($BUILD_NUMBER + 1))
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create
+          keychain initialize
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build the IPA
+        script: |
+          xcode-project build-ipa \
+            --project MacroDime.xcodeproj \
+            --scheme MacroDime
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Leave App Store submission manual until you have actually used the
+        # app on a device.
+        submit_to_app_store: false
