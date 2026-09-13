@@ -76,6 +76,10 @@ final class UserProfileViewModel {
     /// the side effect lives in the method instead.
     private(set) var budgetTier: BudgetTier = .strict
 
+    /// Gates the final step. Required by App Review guideline 1.4.1, and
+    /// the honest thing to do for an app that prescribes a deficit.
+    var hasAcknowledgedDisclaimer = false
+
     var dailyFoodBudget: Double = BudgetTier.strict.defaultDailyAllowance
     private(set) var hasEditedBudget = false
 
@@ -172,6 +176,7 @@ final class UserProfileViewModel {
         switch step {
         case .bodyMetrics: validationError == nil
         case .budget: dailyFoodBudget > 0
+        case .summary: hasAcknowledgedDisclaimer && validationError == nil
         default: true
         }
     }
@@ -208,6 +213,7 @@ final class UserProfileViewModel {
         sex = profile.sex
         goal = profile.goal
         activity = profile.activity
+        hasAcknowledgedDisclaimer = profile.hasAcknowledgedHealthDisclaimer
         hasEditedBudget = true      // an existing budget is the user's, not a default
         budgetTier = profile.budgetTier
         dailyFoodBudget = profile.dailyFoodBudget
@@ -230,6 +236,7 @@ final class UserProfileViewModel {
         profile.budgetTier = budgetTier
         profile.dailyFoodBudget = dailyFoodBudget
         profile.hasCompletedOnboarding = true
+        profile.hasAcknowledgedHealthDisclaimer = hasAcknowledgedDisclaimer
         profile.touch()
 
         if existing == nil { context.insert(profile) }

@@ -46,7 +46,8 @@ let package = Package(
                 "App",          // @main, SwiftUI App lifecycle
                 "Views",        // SwiftUI
                 "ViewModels",   // @Observable + SwiftData ModelContext
-                "Persistence"   // SwiftData @Model
+                "Persistence",  // SwiftData @Model
+                "Resources"     // Asset catalogue: Xcode territory, not SwiftPM's
             ],
             sources: [
                 "Domain",

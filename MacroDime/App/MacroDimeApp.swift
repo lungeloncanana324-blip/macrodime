@@ -137,6 +137,24 @@ struct SettingsView: View {
                 } footer: {
                     Text("Your targets are recalculated from your current weight every time it changes.")
                 }
+
+                Section {
+                    NavigationLink {
+                        HealthAndSafetyView()
+                    } label: {
+                        Label("Health & Safety", systemImage: "heart.text.square.fill")
+                    }
+                } footer: {
+                    Text(HealthDisclaimer.short)
+                }
+
+                Section {
+                    DeleteAllDataButton()
+                } header: {
+                    Text("Your data")
+                } footer: {
+                    Text("Everything MacroDime stores stays on this device. Nothing is uploaded, and there is no account.")
+                }
             }
             .navigationTitle("Settings")
             .sheet(isPresented: $isEditingProfile) {

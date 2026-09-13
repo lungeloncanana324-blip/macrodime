@@ -23,6 +23,10 @@ final class UserProfile {
     var createdAt: Date
     var updatedAt: Date
     var hasCompletedOnboarding: Bool
+    /// Set when the user accepts the health disclaimer during onboarding.
+    /// Defaulted so the property is additive for SwiftData's lightweight
+    /// migration rather than a schema break.
+    var hasAcknowledgedHealthDisclaimer: Bool = false
 
     // MARK: Body metrics (always stored metric)
 
@@ -63,13 +67,15 @@ final class UserProfile {
         budgetTier: BudgetTier = .strict,
         measurementSystem: MeasurementSystem = .metric,
         dailyFoodBudget: Double? = nil,
-        hasCompletedOnboarding: Bool = false
+        hasCompletedOnboarding: Bool = false,
+        hasAcknowledgedHealthDisclaimer: Bool = false
     ) {
         self.id = id
         self.displayName = displayName
         self.createdAt = .now
         self.updatedAt = .now
         self.hasCompletedOnboarding = hasCompletedOnboarding
+        self.hasAcknowledgedHealthDisclaimer = hasAcknowledgedHealthDisclaimer
         self.heightCm = heightCm
         self.weightKg = weightKg
         self.age = age

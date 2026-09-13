@@ -35,7 +35,11 @@ struct BodyScienceEngine {
         /// than silently producing a nonsense prescription.
         static let weightRangeKg: ClosedRange<Double> = 25...350
         static let heightRangeCm: ClosedRange<Double> = 90...250
-        static let ageRange: ClosedRange<Int> = 13...100
+        /// Adults only. This app prescribes calorie deficits, and a growing body
+        /// needs supervised intake rather than an algorithm's. The floor is 18
+        /// rather than 13 for that reason first, and because App Review treats
+        /// weight-loss guidance offered to minors as a 1.4.1 rejection.
+        static let ageRange: ClosedRange<Int> = 18...100
     }
 
     // MARK: Input
@@ -86,7 +90,7 @@ struct BodyScienceEngine {
             switch self {
             case .weightOutOfRange: "Enter a weight between 25 kg and 350 kg."
             case .heightOutOfRange: "Enter a height between 90 cm and 250 cm."
-            case .ageOutOfRange: "This app is designed for ages 13 to 100."
+            case .ageOutOfRange: "MacroDime is for adults. Enter an age between 18 and 100."
             }
         }
     }

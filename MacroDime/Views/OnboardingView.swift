@@ -110,6 +110,16 @@ struct OnboardingView: View {
 
     private var footer: some View {
         VStack(spacing: 12) {
+            if model.step == .summary, !model.hasAcknowledgedDisclaimer {
+                Label(
+                    "Please confirm you understand the health note above.",
+                    systemImage: "info.circle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             if let error = model.validationError, model.step == .bodyMetrics {
                 Label(error.message, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
@@ -197,7 +207,7 @@ struct OnboardingView: View {
                     weightField
                     Divider()
 
-                    Stepper(value: $model.age, in: 13...100) {
+                    Stepper(value: $model.age, in: 18...100) {
                         LabeledContent("Age", value: "\(model.age)")
                     }
 
@@ -464,7 +474,9 @@ struct OnboardingView: View {
                 }
             }
 
-            Text("BMI is a population statistic, not a body-composition measure. Track your waist and photos alongside it.")
+            HealthDisclaimerCard(isAcknowledged: $model.hasAcknowledgedDisclaimer)
+
+            Text(HealthDisclaimer.bmiCaveat)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
