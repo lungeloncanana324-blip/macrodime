@@ -199,9 +199,28 @@ swift test     Executed 44 tests, with 0 failures
 
 Every figure in this README is output from that compiled binary.
 
-**The UI layer has still never been compiled.** `App/`, `Views/`, `ViewModels/`
-and `Persistence/` need SwiftUI, SwiftData and UIKit — Apple-only, closed source,
-buildable on macOS alone. Expect to fix some SDK friction there on first build in
-Xcode; the SwiftData model graph and the `@Observable` view models are the most
-likely places to need adjustment. The science and the swap algorithm, which is
-where the real risk lived, are now verified rather than argued.
+**The whole app compiles too, including the SwiftUI and SwiftData layer.** CI
+builds it on a hosted macOS runner (`.github/workflows/ios.yml`) — which is how
+it gets built without owning a Mac:
+
+```
+xcodebuild build   -scheme MacroDime                 success
+xcodebuild test    iPhone 16 simulator, 44 tests     success
+```
+
+Three errors stood between the code and that result. Two were fixed by
+inspection before the first run, neither reachable from the Linux tests:
+
+- a `didSet` inside an `@Observable` class — the macro rewrites stored
+  properties into computed ones, which cannot also carry property observers
+- actor isolation across all 19 `View` structs — SwiftUI isolates `body` to the
+  main actor through the protocol, but not a struct's other members
+
+The third, the missing `platforms:` declaration above, was caught by CI itself.
+
+**What compiling does not prove.** The app has never been *launched*. SwiftData
+resolves its schema at runtime, so a bad model graph surfaces on first launch
+rather than at build time — and `MacroDimeApp.init` deliberately `fatalError`s
+if the container will not open. Onboarding, the catalogue seeder and the first
+save are all still unexercised. The next real milestone is TestFlight on a
+physical device.
