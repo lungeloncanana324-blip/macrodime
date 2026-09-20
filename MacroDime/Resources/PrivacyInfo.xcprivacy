@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    PrivacyInfo.xcprivacy
+    MacroDime
+
+    Apple requires this manifest for every app and third-party SDK since
+    spring 2024. It answers two questions: what data leaves the device, and
+    which "required reason" APIs the app touches.
+
+    Data: none collected. MacroDime has no account, no analytics, no network
+    calls at all. Body metrics, meals, prices and progress photos stay in the
+    app's own SwiftData store. The photo library is read only when the user
+    picks a progress photo, and the image is copied into that store.
+
+    APIs: UserDefaults, which the catalogue seeder uses to remember which
+    catalogue version it has written. Reason CA92.1 covers exactly that use:
+    reading and writing information accessible only to the app itself.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

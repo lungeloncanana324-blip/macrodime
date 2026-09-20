@@ -7,7 +7,7 @@
 //  alongside it and meal portions can hold a real relationship rather than a
 //  loose string key.
 //
-//  The engine never sees this type — `snapshot` converts to the `Sendable`
+//  The engine never sees this type, `snapshot` converts to the `Sendable`
 //  value type at the boundary.
 //
 
@@ -24,6 +24,11 @@ final class FoodItem {
     var name: String
     var sectionRaw: String
     var categoryRaw: String
+    /// The culinary family substitutions are restricted to. Stored raw like
+    /// every other enum. Defaults to `""` so the property is additive for
+    /// SwiftData's lightweight migration; the accessor falls back to the
+    /// category's default group when the stored value is unknown or missing.
+    var swapGroupRaw: String = ""
     var costTierRaw: String
 
     var costPerServing: Double
@@ -38,6 +43,12 @@ final class FoodItem {
 
     var satietyIndex: Double
     var isSwapCandidate: Bool
+    /// Dietary flags, stored as the raw bit pattern of `FoodTraits`. An `Int`
+    /// rather than a set so the value is a plain column, which keeps it
+    /// predicate-safe and migration-trivial.
+    var traitsRaw: Int = 0
+    /// Active preparation time in minutes.
+    var prepMinutes: Int = 0
     /// Distinguishes user-added foods from curated ones, so a catalogue
     /// refresh can update the latter without touching the former.
     var isUserCreated: Bool
@@ -48,6 +59,7 @@ final class FoodItem {
         name: String,
         section: GrocerySection,
         category: FoodCategory,
+        swapGroup: SwapGroup? = nil,
         costTier: BudgetTier,
         costPerServing: Double,
         servingDescription: String,
@@ -55,6 +67,8 @@ final class FoodItem {
         nutrition: NutritionFacts,
         satietyIndex: Double,
         isSwapCandidate: Bool = true,
+        traits: FoodTraits = [],
+        prepMinutes: Int = 0,
         isUserCreated: Bool = false,
         isFavourite: Bool = false
     ) {
@@ -62,6 +76,7 @@ final class FoodItem {
         self.name = name
         self.sectionRaw = section.rawValue
         self.categoryRaw = category.rawValue
+        self.swapGroupRaw = (swapGroup ?? SwapGroup.default(for: category)).rawValue
         self.costTierRaw = costTier.rawValue
         self.costPerServing = costPerServing
         self.servingDescription = servingDescription
@@ -72,6 +87,8 @@ final class FoodItem {
         self.fatGrams = nutrition.fat
         self.satietyIndex = satietyIndex
         self.isSwapCandidate = isSwapCandidate
+        self.traitsRaw = traits.rawValue
+        self.prepMinutes = prepMinutes
         self.isUserCreated = isUserCreated
         self.isFavourite = isFavourite
     }
@@ -83,6 +100,7 @@ final class FoodItem {
             name: snapshot.name,
             section: snapshot.section,
             category: snapshot.category,
+            swapGroup: snapshot.swapGroup,
             costTier: snapshot.costTier,
             costPerServing: snapshot.costPerServing,
             servingDescription: snapshot.servingDescription,
@@ -90,6 +108,8 @@ final class FoodItem {
             nutrition: snapshot.nutrition,
             satietyIndex: snapshot.satietyIndex,
             isSwapCandidate: snapshot.isSwapCandidate,
+            traits: snapshot.traits,
+            prepMinutes: snapshot.prepMinutes,
             isUserCreated: isUserCreated
         )
     }
@@ -104,6 +124,26 @@ final class FoodItem {
     var category: FoodCategory {
         get { FoodCategory(rawValue: categoryRaw) ?? .carbBase }
         set { categoryRaw = newValue.rawValue }
+    }
+
+    /// Falls back to the category's default group, which for a vegetable is
+    /// `.unclassified` (no substitutes). A store written before this property
+    /// existed therefore degrades to "no vegetable swaps", never to the old
+    /// "any vegetable may replace any other".
+    var swapGroup: SwapGroup {
+        get {
+            SwapGroup(rawValue: swapGroupRaw) ?? SwapGroup.default(for: category)
+        }
+        set { swapGroupRaw = newValue.rawValue }
+    }
+
+    /// Dietary flags. A store written before these existed reads as plant-only,
+    /// which is the permissive direction: such a row keeps its existing
+    /// behaviour for an unrestricted user, and a restricted user's own filter
+    /// still applies to everything else in the catalogue.
+    var traits: FoodTraits {
+        get { FoodTraits(rawValue: traitsRaw) }
+        set { traitsRaw = newValue.rawValue }
     }
 
     var costTier: BudgetTier {
@@ -137,13 +177,16 @@ final class FoodItem {
             name: name,
             section: section,
             category: category,
+            swapGroup: swapGroup,
             costTier: costTier,
             costPerServing: costPerServing,
             servingDescription: servingDescription,
             servingGrams: servingGrams,
             nutrition: nutrition,
             satietyIndex: satietyIndex,
-            isSwapCandidate: isSwapCandidate
+            isSwapCandidate: isSwapCandidate,
+            traits: traits,
+            prepMinutes: prepMinutes
         )
     }
 
@@ -153,6 +196,7 @@ final class FoodItem {
         name = snapshot.name
         section = snapshot.section
         category = snapshot.category
+        swapGroup = snapshot.swapGroup
         costTier = snapshot.costTier
         costPerServing = snapshot.costPerServing
         servingDescription = snapshot.servingDescription
@@ -160,5 +204,7 @@ final class FoodItem {
         nutrition = snapshot.nutrition
         satietyIndex = snapshot.satietyIndex
         isSwapCandidate = snapshot.isSwapCandidate
+        traits = snapshot.traits
+        prepMinutes = snapshot.prepMinutes
     }
 }

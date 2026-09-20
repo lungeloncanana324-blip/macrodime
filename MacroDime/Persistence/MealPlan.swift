@@ -5,7 +5,7 @@
 //  A day's plan: MealPlan → PlannedMeal → MealPortion → FoodItem.
 //
 //  Delete rules: a plan owns its meals and a meal owns its portions, so both
-//  cascade. A portion only *references* a food — deleting a food nullifies the
+//  cascade. A portion only *references* a food, deleting a food nullifies the
 //  reference rather than destroying the history of what was eaten, which is why
 //  `MealPortion` caches the food's name and macros (see `foodName` below).
 //
@@ -35,7 +35,7 @@ final class MealPlan {
         self.meals = []
     }
 
-    /// Meals in slot order — SwiftData relationships are unordered sets, so
+    /// Meals in slot order, SwiftData relationships are unordered sets, so
     /// never render `meals` directly.
     var orderedMeals: [PlannedMeal] {
         meals.sorted { $0.slot.sortOrder < $1.slot.sortOrder }
@@ -153,7 +153,7 @@ final class MealPortion {
     var servings: Double
     var addedAt: Date
     /// Cached display name. Keeps the meal readable if the food record is ever
-    /// deleted — the relationship nullifies, but the history should not become
+    /// deleted, the relationship nullifies, but the history should not become
     /// an anonymous blank row.
     var foodName: String
 

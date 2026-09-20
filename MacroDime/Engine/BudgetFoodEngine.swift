@@ -12,7 +12,7 @@
 //
 //  A one-for-one swap cannot hold four macros at once. Take a salmon dinner:
 //  substituting canned tuna for the salmon, matched on protein, lands the meal
-//  49% low on fat — because the salmon was carrying 17 g of it. Rejecting that
+//  49% low on fat, because the salmon was carrying 17 g of it. Rejecting that
 //  candidate would mean rejecting the single most valuable swap in the app.
 //
 //  So a substitution is followed by a **rebalance pass**: the fat and carb
@@ -22,8 +22,10 @@
 //
 //  ## The three rules
 //
-//  1. **Swap within a category only.** Salmon may become tuna or eggs; never
-//     oats, even though oats could be macro-matched on paper.
+//  1. **Swap within a swap group only.** Salmon may become tuna or eggs; never
+//     oats, even though oats could be macro-matched on paper. For vegetables
+//     the group is a culinary family rather than the category, which is what
+//     stops the engine proposing carrots in place of broccoli. See `SwapGroup`.
 //  2. **Drift is measured against the original meal, cumulatively.** Swapping
 //     three ingredients one at a time must not let the meal walk 10% away three
 //     times over.
@@ -106,8 +108,10 @@ struct SwapPolicy: Hashable, Sendable {
     var minimumSavingsPerSwap: Double = 0.05
     /// The ceiling tier a replacement may come from.
     var targetTier: BudgetTier = .strict
-    /// Substitutions stay inside the ingredient's `FoodCategory`.
-    var restrictToSameCategory: Bool = true
+    /// Substitutions stay inside the ingredient's `SwapGroup`: the category for
+    /// everything except vegetables, where the culinary family is what counts.
+    /// See `SwapGroup` for why the category alone is not enough.
+    var restrictToSameSwapGroup: Bool = true
     /// Whether to re-portion existing fat and carb sources to absorb the macro
     /// gap a substitution opens. Off, most protein swaps are unachievable.
     var allowsRebalancing: Bool = true
@@ -156,7 +160,7 @@ struct PortionAdjustment: Identifiable, Hashable, Sendable {
 /// One ingredient substitution, together with the complete meal it produces.
 ///
 /// The resulting meal is carried rather than recomputed by the caller because a
-/// substitution may have triggered a rebalance — applying only the replacement
+/// substitution may have triggered a rebalance, applying only the replacement
 /// portion would give a different, out-of-tolerance meal.
 struct PortionSwap: Identifiable, Hashable, Sendable {
     var id: UUID { original.id }
@@ -275,7 +279,7 @@ struct BudgetFoodEngine {
     ///
     /// Exposed publicly so the UI can offer a "swap this ingredient" picker
     /// rather than only the all-at-once button. Each result carries the whole
-    /// resulting meal — apply that, not just the replacement portion.
+    /// resulting meal, apply that, not just the replacement portion.
     func rankedReplacements(
         for portion: Portion,
         within meal: MealItem,
@@ -297,8 +301,11 @@ struct BudgetFoodEngine {
             guard candidate.id != portion.food.id else { continue }
             guard candidate.isSwapCandidate else { continue }
             guard candidate.costTier <= ceiling else { continue }
-            if policy.restrictToSameCategory {
-                guard candidate.category == portion.food.category else { continue }
+            if policy.restrictToSameSwapGroup {
+                // The family gate, not the category gate. Both broccoli and
+                // carrots are `.vegetable`; only one of them belongs in a pan of
+                // broccoli, so the comparison is made against `swapGroup`.
+                guard candidate.swapGroup == portion.food.swapGroup else { continue }
             }
 
             let servings = matchedServings(replacing: portion, with: candidate)
@@ -350,7 +357,7 @@ struct BudgetFoodEngine {
     ///
     /// Fat is corrected first: it is the densest macro, so fixing it moves
     /// calories the furthest, and the carb pass then works against an
-    /// already-close calorie total. The substituted portion is locked — undoing
+    /// already-close calorie total. The substituted portion is locked, undoing
     /// the swap by re-scaling it would defeat the point.
     ///
     /// Each adjustment is kept only if it actually lowers mean drift, so a
@@ -369,7 +376,7 @@ struct BudgetFoodEngine {
             let gap = axis.value(in: baseline) - axis.value(in: working.nutrition)
             guard abs(gap) >= policy.rebalanceThresholdGrams else { continue }
 
-            // Use the portion richest in this macro — moving one ingredient a
+            // Use the portion richest in this macro, moving one ingredient a
             // long way beats nudging three.
             let lever = working.portions
                 .filter { $0.id != lockedPortionID && $0.food.category == leverCategory }
@@ -409,8 +416,8 @@ struct BudgetFoodEngine {
 
     /// How many servings of `candidate` best stand in for `portion`.
     ///
-    /// Matched on the *category's* anchor macro — protein for a protein anchor,
-    /// fat for a fat source — not on whichever macro happens to carry the most
+    /// Matched on the *category's* anchor macro, protein for a protein anchor,
+    /// fat for a fat source, not on whichever macro happens to carry the most
     /// energy. See `FoodCategory.anchorAxis` for why that distinction matters.
     ///
     /// Returns `0` when no sane quantity exists.

@@ -6,7 +6,7 @@
 //  owed regardless:
 //
 //  1. A plain statement that calorie targets are estimates, not medical advice
-//     (Guideline 1.4.1 — physical-harm). It is acknowledged during onboarding
+//     (Guideline 1.4.1, physical-harm). It is acknowledged during onboarding
 //     and remains readable afterwards in Settings.
 //  2. A way to delete everything the app knows about you (Guideline 5.1.1(v)).
 //     All data here is local, which makes deletion genuinely complete rather
@@ -132,7 +132,7 @@ struct HealthAndSafetyView: View {
 enum DataManagement {
 
     /// Removes every record the user created. The curated ingredient catalogue
-    /// survives — it ships with the app and is not the user's data.
+    /// survives, it ships with the app and is not the user's data.
     static func deleteAllUserData(context: ModelContext) throws {
         // Children first. The cascade rules would handle this, but being
         // explicit means the operation does not depend on relationship

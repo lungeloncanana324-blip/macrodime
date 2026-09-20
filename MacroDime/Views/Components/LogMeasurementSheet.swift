@@ -108,7 +108,7 @@ struct LogMeasurementSheet: View {
         }
     }
 
-    /// Nothing to save is not an error — it just means the Save button stays off.
+    /// Nothing to save is not an error, it just means the Save button stays off.
     private var hasAnything: Bool {
         parsed(waistText) != nil
             || parsed(hipText) != nil
@@ -120,7 +120,7 @@ struct LogMeasurementSheet: View {
     private func measurementField(_ title: String, text: Binding<String>, unit: String) -> some View {
         LabeledContent(title) {
             HStack(spacing: 6) {
-                TextField("—", text: text)
+                TextField("\u{2014}", text: text)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 100)
@@ -173,7 +173,7 @@ struct LogMeasurementSheet: View {
         context.insert(measurement)
         profile.measurements.append(measurement)
 
-        // A new weight is also the profile's current weight — the prescription
+        // A new weight is also the profile's current weight, the prescription
         // depends on it, so leaving the profile stale would quietly keep the
         // user on last month's targets.
         if let weightKg {

@@ -24,6 +24,14 @@ struct FoodSnapshot: Identifiable, Hashable, Sendable {
     let name: String
     let section: GrocerySection
     let category: FoodCategory
+    /// The finer axis substitutions happen on. Equal to `category` for every
+    /// category except vegetables, which are split into culinary families so
+    /// that broccoli is never offered in place of carrots. See `SwapGroup`.
+    ///
+    /// Defaulted from `category` when omitted, so a food declared without one is
+    /// still valid. Vegetables default to `.unclassified`, which never matches
+    /// anything, so an unclassified vegetable simply has no substitutes.
+    let swapGroup: SwapGroup
     let costTier: BudgetTier
 
     /// Cost of one serving in the user's currency.
@@ -36,29 +44,40 @@ struct FoodSnapshot: Identifiable, Hashable, Sendable {
     let nutrition: NutritionFacts
     /// Fullness per calorie, 0-100, loosely modelled on the Holt satiety index.
     /// Used to break ties between candidates that are equally cheap and equally
-    /// macro-aligned — the more filling option wins.
+    /// macro-aligned, the more filling option wins.
     let satietyIndex: Double
     /// Condiments and near-zero-calorie items are excluded from substitution:
     /// scaling them produces nonsense, and swapping them saves nothing.
     let isSwapCandidate: Bool
+    /// What the food is made of, in the terms a dietary restriction is phrased
+    /// in. Empty means plant-only with no declarable allergen, which covers the
+    /// vegetables, fruit, oils and spices.
+    let traits: FoodTraits
+    /// Active preparation time in minutes. 0 means ready to eat as bought.
+    /// Read by `DietaryFilter` against the user's stated `PrepEffort`.
+    let prepMinutes: Int
 
     init(
         id: String,
         name: String,
         section: GrocerySection,
         category: FoodCategory,
+        swapGroup: SwapGroup? = nil,
         costTier: BudgetTier,
         costPerServing: Double,
         servingDescription: String,
         servingGrams: Double,
         nutrition: NutritionFacts,
         satietyIndex: Double,
-        isSwapCandidate: Bool = true
+        isSwapCandidate: Bool = true,
+        traits: FoodTraits = [],
+        prepMinutes: Int = 0
     ) {
         self.id = id
         self.name = name
         self.section = section
         self.category = category
+        self.swapGroup = swapGroup ?? SwapGroup.default(for: category)
         self.costTier = costTier
         self.costPerServing = costPerServing
         self.servingDescription = servingDescription
@@ -66,14 +85,48 @@ struct FoodSnapshot: Identifiable, Hashable, Sendable {
         self.nutrition = nutrition
         self.satietyIndex = satietyIndex
         self.isSwapCandidate = isSwapCandidate
+        self.traits = traits
+        self.prepMinutes = prepMinutes
     }
 
-    /// Protein grams bought per currency unit — the headline "budget powerhouse"
+    /// A copy with dietary annotations filled in.
+    ///
+    /// The catalogue keeps its dietary metadata in two lookup tables rather than
+    /// in every literal, so that 57 food declarations stay about food and macros
+    /// while the dietary view of the same data can be read, and audited, in one
+    /// place. This is the join between the two.
+    func annotated(traits: FoodTraits, prepMinutes: Int) -> FoodSnapshot {
+        FoodSnapshot(
+            id: id,
+            name: name,
+            section: section,
+            category: category,
+            swapGroup: swapGroup,
+            costTier: costTier,
+            costPerServing: costPerServing,
+            servingDescription: servingDescription,
+            servingGrams: servingGrams,
+            nutrition: nutrition,
+            satietyIndex: satietyIndex,
+            isSwapCandidate: isSwapCandidate,
+            traits: traits,
+            prepMinutes: prepMinutes
+        )
+    }
+
+    /// Protein grams bought per currency unit, the headline "budget powerhouse"
     /// number, and the metric the swap engine is ultimately optimising.
+    ///
+    /// The unit is one USD, the currency the catalogue is priced in. Displaying
+    /// it in another currency is a conversion, not a relabelling: `R18.50` of
+    /// protein is the same quantity as `$1` of protein.
     var proteinPerCurrencyUnit: Double {
         guard costPerServing > 0 else { return 0 }
         return nutrition.protein / costPerServing
     }
+
+    /// This food's price, tagged with the currency it is denominated in.
+    var price: Money { .catalogue(costPerServing) }
 
     /// Calories bought per currency unit.
     var caloriesPerCurrencyUnit: Double {

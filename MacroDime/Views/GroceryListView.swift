@@ -15,6 +15,9 @@ import SwiftData
 
 @MainActor
 struct GroceryListView: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.modelContext) private var context
     @Query private var profiles: [UserProfile]
@@ -40,7 +43,7 @@ struct GroceryListView: View {
                     .filter { $0.section == section }
                     .filter { isShowingCheckedItems || !$0.isChecked }
                     .sorted { lhs, rhs in
-                        // Unchecked first, then most expensive — the decisions
+                        // Unchecked first, then most expensive, the decisions
                         // worth making float to the top of each aisle.
                         if lhs.isChecked != rhs.isChecked { return !lhs.isChecked }
                         if lhs.estimatedCost != rhs.estimatedCost { return lhs.estimatedCost > rhs.estimatedCost }
@@ -145,7 +148,7 @@ struct GroceryListView: View {
                     HStack {
                         Label(group.section.displayName, systemImage: group.section.systemImage)
                         Spacer()
-                        Text(DisplayFormat.currency(group.items.reduce(0) { $0 + $1.outstandingCost }))
+                        Text(prices.format(group.items.reduce(0) { $0 + $1.outstandingCost }))
                             .monospacedDigit()
                     }
                 }
@@ -159,14 +162,14 @@ struct GroceryListView: View {
             HStack {
                 StatTile(
                     title: "Still to buy",
-                    value: DisplayFormat.currency(outstandingTotal),
+                    value: prices.format(outstandingTotal),
                     caption: "\(checkedCount) of \(weekItems.count) ticked",
                     systemImage: "cart.fill",
                     tint: Brand.underBudget
                 )
                 StatTile(
                     title: "Full list",
-                    value: DisplayFormat.currency(fullTotal),
+                    value: prices.format(fullTotal),
                     caption: "Before pantry items",
                     systemImage: "sum",
                     tint: .secondary
@@ -174,8 +177,8 @@ struct GroceryListView: View {
                 if weeklyBudget > 0 {
                     StatTile(
                         title: "Weekly budget",
-                        value: DisplayFormat.currency(weeklyBudget),
-                        caption: fullTotal <= weeklyBudget ? "Within budget" : "Over by \(DisplayFormat.currency(fullTotal - weeklyBudget))",
+                        value: prices.format(weeklyBudget),
+                        caption: fullTotal <= weeklyBudget ? "Within budget" : "Over by \(prices.format(fullTotal - weeklyBudget))",
                         systemImage: fullTotal <= weeklyBudget ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                         tint: fullTotal <= weeklyBudget ? Brand.underBudget : Brand.carbs
                     )
@@ -231,10 +234,13 @@ struct GroceryListView: View {
 
 // MARK: - Row
 
-/// One checkable line. The whole row is the hit target — ticking things off
+/// One checkable line. The whole row is the hit target, ticking things off
 /// happens one-handed, in a shop, usually in a hurry.
 @MainActor
 struct GroceryRow: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     let item: GroceryItem
     let onToggle: () -> Void
@@ -265,7 +271,7 @@ struct GroceryRow: View {
 
                 Spacer(minLength: 6)
 
-                Text(DisplayFormat.currency(item.estimatedCost))
+                Text(prices.format(item.estimatedCost))
                     .font(.subheadline.weight(.medium))
                     .monospacedDigit()
                     .foregroundStyle(item.isAlreadyOwned || item.isChecked ? .secondary : .primary)

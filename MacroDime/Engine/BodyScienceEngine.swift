@@ -25,7 +25,7 @@ struct BodyScienceEngine {
     enum Constants {
         /// Share of *target* calories allocated to dietary fat.
         static let fatCalorieShare: Double = 0.25
-        /// Fat is squeezed no lower than this before protein is clamped —
+        /// Fat is squeezed no lower than this before protein is clamped,
         /// below roughly 20% of calories, hormonal and satiety costs start to
         /// outweigh the benefit of freeing up calories.
         static let minimumFatCalorieShare: Double = 0.20
@@ -143,7 +143,7 @@ struct BodyScienceEngine {
     }
 
     /// Standard WHO adult BMI bands. Presented with the caveat that BMI ignores
-    /// body composition — this app tracks waist and photos precisely because of
+    /// body composition, this app tracks waist and photos precisely because of
     /// that, so the category is never used to drive the prescription.
     enum BMICategory: String, Hashable, Sendable, CaseIterable {
         case underweight
@@ -226,7 +226,7 @@ struct BodyScienceEngine {
     /// more protein + fat calories than the target allows, which would leave
     /// carbohydrate negative. Rather than emit a nonsense plan, the engine
     /// squeezes fat toward its 20% floor, and only if that is still not enough
-    /// clamps protein — reporting each override in `adjustments`.
+    /// clamps protein, reporting each override in `adjustments`.
     static func macroSplit(
         targetCalories: Double,
         weightKg: Double,
@@ -244,7 +244,7 @@ struct BodyScienceEngine {
         //
         // The floor is the stricter of "20% of calories" and "0.5 g/kg", then
         // capped at the original allocation. Without that cap, a heavy person
-        // on a small target — whose 0.5 g/kg floor is *above* their 25% share —
+        // on a small target, whose 0.5 g/kg floor is *above* their 25% share,
         // would see this branch silently raise their fat instead of lowering
         // it. When the floor binds that hard there is nothing to squeeze, and
         // the protein clamp below is the correct lever.
@@ -274,8 +274,8 @@ struct BodyScienceEngine {
         }
 
         // Step 3: carbohydrate absorbs what is left. `max(0,)` is belt and
-        // braces — the two clamps above already guarantee a non-negative
-        // remainder — but it keeps the invariant local and obvious.
+        // braces, the two clamps above already guarantee a non-negative
+        // remainder, but it keeps the invariant local and obvious.
         let carbCalories = max(targetCalories - proteinCalories - fatCalories, 0)
         let carbGrams = carbCalories / AtwaterFactor.carbohydrate
 

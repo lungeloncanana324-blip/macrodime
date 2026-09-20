@@ -61,11 +61,15 @@ enum UnitConversion {
 /// locale change never leaves one screen disagreeing with another.
 enum DisplayFormat {
 
-    /// Currency in the device locale. The catalogue's prices are authored in
-    /// USD, so this formats the *number* natively without pretending to convert
-    /// the amount — see the note in `FoodCatalog`.
-    static func currency(_ amount: Double) -> String {
-        amount.formatted(.currency(code: Locale.current.currency?.identifier ?? "USD"))
+    /// Currency in an explicit currency code.
+    ///
+    /// The code is required rather than inferred from the locale. The catalogue
+    /// is priced in USD (see `PriceBook`), and formatting a dollar amount with
+    /// the device's currency put a rand or euro sign on a dollar figure, which
+    /// is a wrong number presented as a right one. Callers either pass the
+    /// catalogue's currency, or convert first through `CurrencySettings`.
+    static func currency(_ amount: Double, code: String = PriceBook.currencyCode) -> String {
+        amount.formatted(.currency(code: code))
     }
 
     /// Whole kilocalories, e.g. `"1,842 kcal"`.

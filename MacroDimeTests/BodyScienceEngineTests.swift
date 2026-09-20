@@ -4,7 +4,7 @@
 //
 //  The engine is pure, so every case here runs without a ModelContainer.
 //  Expected values are worked by hand from the stated formulae, not copied from
-//  a previous run of the code — a test that only asserts "same as last time"
+//  a previous run of the code, a test that only asserts "same as last time"
 //  cannot catch a wrong formula.
 //
 
@@ -38,7 +38,7 @@ final class BodyScienceEngineTests: XCTestCase {
         XCTAssertEqual(BodyScienceEngine.BMICategory.category(for: 30), .obese)
     }
 
-    // MARK: BMR — Mifflin-St Jeor
+    // MARK: BMR (Mifflin-St Jeor)
 
     func testMaleBMR() {
         // 10(80) + 6.25(180) − 5(30) + 5 = 800 + 1125 − 150 + 5 = 1780
@@ -180,7 +180,7 @@ final class BodyScienceEngineTests: XCTestCase {
         XCTAssertEqual(result.targets.calories, 1_200, accuracy: accuracy)
         XCTAssertTrue(result.adjustments.contains(.calorieFloorApplied))
         // The floor raises intake above maintenance-minus-20%, so the deficit
-        // is smaller than requested — that is the point of the floor.
+        // is smaller than requested, that is the point of the floor.
         XCTAssertGreaterThan(result.targets.calories, result.tdee * 0.80)
     }
 
@@ -210,7 +210,7 @@ final class BodyScienceEngineTests: XCTestCase {
     }
 
     /// Regression guard. The fat floor is the stricter of "20% of calories" and
-    /// "0.5 g/kg", but it must never *raise* fat above its 25% allocation —
+    /// "0.5 g/kg", but it must never *raise* fat above its 25% allocation,
     /// which is exactly what an uncapped `max()` of the two floors did.
     func testFatFloorNeverIncreasesFatAllocation() {
         for weight in stride(from: 60.0, through: 200.0, by: 10) {
@@ -274,7 +274,7 @@ final class BodyScienceEngineTests: XCTestCase {
     }
 
     func testFeetAndInchesCarryRatherThanShowingTwelveInches() {
-        // 182.88 cm is exactly 6'0" — rounding must not yield 5' 12".
+        // 182.88 cm is exactly 6'0", so rounding must not yield 5' 12".
         let parts = UnitConversion.feetAndInches(fromCentimetres: 182.88)
         XCTAssertEqual(parts.feet, 6)
         XCTAssertEqual(parts.inches, 0)

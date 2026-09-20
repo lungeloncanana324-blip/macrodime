@@ -27,6 +27,14 @@ final class MealPlannerViewModel {
     private(set) var targets: NutritionFacts?
     private(set) var dailyBudget: Double = 0
     private(set) var budgetTier: BudgetTier = .strict
+    /// The rules the plan is built under. Every catalogue the engine or the
+    /// picker sees has already been through this filter, so a prohibited food
+    /// cannot be suggested in the first place.
+    private(set) var dietary: DietaryProfile = .unrestricted
+
+    /// How money is shown, so audit messages quote the same currency as the
+    /// meters beside them.
+    private(set) var currency: CurrencySettings = .usd
 
     /// The swap the user is currently being shown, if any.
     var pendingSwap: MealSwap?
@@ -52,6 +60,8 @@ final class MealPlannerViewModel {
             targets = profile.prescription.targets
             dailyBudget = profile.dailyFoodBudget
             budgetTier = profile.budgetTier
+            dietary = profile.dietaryProfile
+            currency = profile.currency
             engine = BudgetFoodEngine(policy: .cuttingCosts(from: profile.budgetTier))
         }
 
@@ -59,13 +69,33 @@ final class MealPlannerViewModel {
             let foods = try context.fetch(
                 FetchDescriptor<FoodItem>(sortBy: [SortDescriptor(\.name)])
             )
-            catalog = foods.map(\.snapshot)
-            engine = BudgetFoodEngine(catalog: catalog, policy: engine.policy)
+            // Filtered once, here: the plan, the swap engine and the ingredient
+            // picker all read from this one list, so nothing downstream has to
+            // remember to check the user's restrictions.
+            let permitted = DietaryFilter.allowed(foods.map(\.snapshot), under: dietary)
+            catalog = permitted
+            engine = BudgetFoodEngine(catalog: permitted, policy: engine.policy)
 
             meals = try plan(context: context, createIfMissing: false)?.mealItems ?? []
         } catch {
             lastError = "Could not load your plan: \(error.localizedDescription)"
         }
+    }
+
+    /// Gaps in the day as it stands: macros against target, spend against
+    /// allowance, and anything the plan does that the profile disallows.
+    ///
+    /// Recomputed rather than cached, for the same reason the prescription is:
+    /// it is a few dozen comparisons, and a cached report that drifts out of
+    /// date is worse than none.
+    var audit: PlanAudit.Report {
+        PlanAudit.day(
+            meals: meals,
+            targets: targets,
+            dailyBudgetUSD: dailyBudget,
+            dietary: dietary,
+            currency: currency
+        )
     }
 
     func select(date newDate: Date, context: ModelContext, profile: UserProfile?) {

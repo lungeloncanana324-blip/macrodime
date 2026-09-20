@@ -16,7 +16,10 @@ enum CatalogSeeder {
     /// Bumped whenever the curated catalogue's *values* change. Stored in
     /// `UserDefaults`, so the common launch does one integer comparison instead
     /// of a full table diff.
-    static let catalogVersion = 1
+    ///
+    /// 2: vegetables gained a culinary `swapGroup` (leafy/cruciferous/root/...),
+    ///    which is what stops the swap engine offering carrots for broccoli.
+    static let catalogVersion = 2
     private static let versionKey = "MacroDime.catalogVersion"
 
     /// Inserts missing curated foods and refreshes the ones already present.
@@ -54,7 +57,7 @@ enum CatalogSeeder {
             try context.save()
             defaults.set(catalogVersion, forKey: versionKey)
         } catch {
-            // A failed seed is recoverable — the next launch retries, since the
+            // A failed seed is recoverable, the next launch retries, since the
             // version key is only written on success.
             assertionFailure("Catalog seed failed: \(error)")
         }

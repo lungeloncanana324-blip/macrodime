@@ -24,7 +24,7 @@ final class GroceryItem {
 
     /// Ticked off in the aisle.
     var isChecked: Bool
-    /// "Already have this" — excluded from the estimated total and kept sticky
+    /// "Already have this", excluded from the estimated total and kept sticky
     /// across regeneration, since a full pantry stays full.
     var isAlreadyOwned: Bool
     /// Monday of the week this list covers. The list is addressed by week, so

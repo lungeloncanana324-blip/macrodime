@@ -11,6 +11,9 @@ import SwiftData
 
 @MainActor
 struct MealPlannerView: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.modelContext) private var context
     @Query private var profiles: [UserProfile]
@@ -67,7 +70,7 @@ struct MealPlannerView: View {
                     model.apply(chosen, in: picker.meal, context: context)
                 }
             }
-            .task(id: profile?.id) {
+            .task(id: profile?.updatedAt) {
                 model.load(context: context, profile: profile)
             }
         }
@@ -107,7 +110,7 @@ struct MealPlannerView: View {
                         .font(.headline)
                     Spacer()
                     if let meal, !meal.isEmpty {
-                        Text(DisplayFormat.currency(meal.cost))
+                        Text(prices.format(meal.cost))
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
                         TierChip(tier: meal.effectiveTier)
@@ -133,7 +136,7 @@ struct MealPlannerView: View {
                             swapUnderReview = swap
                         } label: {
                             Label(
-                                "Swap to save \(DisplayFormat.currency(swap.savings))",
+                                "Swap to save \(prices.format(swap.savings))",
                                 systemImage: "arrow.triangle.2.circlepath"
                             )
                             .font(.subheadline.weight(.medium))
@@ -167,14 +170,14 @@ struct MealPlannerView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 6)
-            Text(DisplayFormat.currency(portion.cost))
+            Text(prices.format(portion.cost))
                 .font(.caption.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
         .contentShape(Rectangle())
         // These rows live in a card, not a `List`, so `swipeActions` would be
-        // inert here — the context menu is the affordance.
+        // inert here, the context menu is the affordance.
         .contextMenu {
             Button("Find a cheaper option", systemImage: "arrow.triangle.2.circlepath") {
                 portionPicker = PortionPickerContext(portion: portion, meal: meal)
@@ -225,6 +228,9 @@ struct PortionPickerContext: Identifiable {
 /// Searchable catalogue with tier and category filters.
 @MainActor
 struct FoodPickerSheet: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -296,10 +302,10 @@ struct FoodPickerSheet: View {
             }
             Spacer(minLength: 6)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(DisplayFormat.currency(food.costPerServing))
+                Text(prices.format(food.costPerServing))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
-                Text("\(DisplayFormat.number(food.proteinPerCurrencyUnit, decimals: 1)) g/\(DisplayFormat.currency(1))")
+                Text("\(DisplayFormat.number(food.proteinPerCurrencyUnit, decimals: 1)) g/\(prices.format(1))")
                     .font(.caption2)
                     .foregroundStyle(Brand.protein)
             }
@@ -313,6 +319,9 @@ struct FoodPickerSheet: View {
 /// than accept the engine's top pick.
 @MainActor
 struct PortionSwapSheet: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.dismiss) private var dismiss
 
@@ -326,7 +335,7 @@ struct PortionSwapSheet: View {
                 Section("Replacing") {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(portion.food.name).font(.subheadline.weight(.medium))
-                        Text("\(portion.quantityDescription) · \(DisplayFormat.currency(portion.cost))")
+                        Text("\(portion.quantityDescription) · \(prices.format(portion.cost))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -376,7 +385,7 @@ struct PortionSwapSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 6)
-            Text("−\(DisplayFormat.currency(option.savings))")
+            Text("−\(prices.format(option.savings))")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(Brand.underBudget)

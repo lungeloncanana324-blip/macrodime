@@ -4,7 +4,7 @@
 //
 //  Multi-step wizard: body metrics → goal → activity → budget → live summary.
 //
-//  The summary step is the point of the whole flow — the user sees their real
+//  The summary step is the point of the whole flow, the user sees their real
 //  TDEE, targets and daily cost estimate *before* committing, so the numbers
 //  feel earned rather than assigned.
 //
@@ -14,6 +14,9 @@ import SwiftData
 
 @MainActor
 struct OnboardingView: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.modelContext) private var context
     @State private var model = UserProfileViewModel()
@@ -23,7 +26,7 @@ struct OnboardingView: View {
     var existingProfile: UserProfile?
     var onComplete: (UserProfile) -> Void = { _ in }
 
-    /// Writable so dismissing the alert actually clears the error — a
+    /// Writable so dismissing the alert actually clears the error, a
     /// `.constant` binding leaves SwiftUI unable to lower the flag itself.
     private var isShowingSaveError: Binding<Bool> {
         Binding(
@@ -51,6 +54,9 @@ struct OnboardingView: View {
                 footer
             }
             .background(Color(.systemGroupedBackground))
+            // The wizard runs before a profile exists, so it injects the draft's
+            // currency rather than reading one from the store.
+            .currencySettings(model.currency)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !model.isFirstStep {
@@ -103,6 +109,9 @@ struct OnboardingView: View {
         case .bodyMetrics: bodyMetricsStep
         case .goal: goalStep
         case .activity: activityStep
+        case .diet: dietStep
+        case .routine: routineStep
+
         case .budget: budgetStep
         case .summary: summaryStep
         }
@@ -327,6 +336,169 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: Routine
+
+    /// How the day is divided and how much cooking is realistic. Both decide
+    /// what the planner may propose, and the cooking answer is the one people
+    /// most often get wrong about themselves.
+    private var routineStep: some View {
+        VStack(spacing: 16) {
+            CardContainer {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Meals a day").font(.headline)
+
+                    ForEach(EatingSchedule.allCases) { schedule in
+                        SelectableRow(
+                            title: schedule.displayName,
+                            subtitle: schedule.subtitle,
+                            systemImage: "clock.fill",
+                            isSelected: model.eatingSchedule == schedule
+                        ) {
+                            withAnimation(.snappy) { model.eatingSchedule = schedule }
+                        }
+                    }
+                }
+            }
+
+            CardContainer {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("How much cooking?").font(.headline)
+
+                    ForEach(PrepEffort.allCases) { effort in
+                        SelectableRow(
+                            title: effort.displayName,
+                            subtitle: effort.subtitle,
+                            systemImage: effort.systemImage,
+                            isSelected: model.prepEffort == effort
+                        ) {
+                            withAnimation(.snappy) { model.prepEffort = effort }
+                        }
+                    }
+                }
+            }
+
+            CardContainer {
+                VStack(alignment: .leading, spacing: 10) {
+                    Stepper(value: $model.mealsOutPerWeek, in: 0...21) {
+                        LabeledContent("Meals eaten out", value: "\(model.mealsOutPerWeek) a week")
+                    }
+
+                    Text("Meals away from home are not planned, counted or budgeted. The plan says so rather than pretending they do not exist.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+
+    // MARK: Diet
+
+    /// What the user eats, and what they refuse. Every answer here removes food
+    /// from the catalogue before the engine plans anything, which is why the
+    /// exclusion count updates as they tap.
+    private var dietStep: some View {
+        VStack(spacing: 16) {
+            CardContainer {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Your pattern").font(.headline)
+
+                    ForEach(DietaryPattern.allCases) { pattern in
+                        SelectableRow(
+                            title: pattern.displayName,
+                            subtitle: pattern.subtitle,
+                            systemImage: pattern.systemImage,
+                            isSelected: model.dietaryPattern == pattern
+                        ) {
+                            withAnimation(.snappy) { model.dietaryPattern = pattern }
+                        }
+                    }
+                }
+            }
+
+            CardContainer {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Anything to avoid?").font(.headline)
+                    Text("Allergies, intolerances, faith rules or plain dislike. Tap to exclude, tap again to allow. This removes ingredients from every suggestion the app makes.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 100), spacing: 8)],
+                        spacing: 8
+                    ) {
+                        ForEach(FoodExclusion.allCases) { exclusion in
+                            exclusionChip(exclusion)
+                        }
+                    }
+
+                    Text(removalSummary)
+                        .font(.caption)
+                        .foregroundStyle(model.excludedFoodCount == 0 ? .secondary : Brand.gold)
+
+                    if model.excludedFoodCount > 0 {
+                        blockedFoodPicker
+                    }
+                }
+            }
+        }
+    }
+
+    private func exclusionChip(_ exclusion: FoodExclusion) -> some View {
+        let isOn = model.foodExclusions.contains(exclusion)
+        return Button {
+            withAnimation(.snappy) { model.toggle(exclusion) }
+        } label: {
+            Text(exclusion.displayName)
+                .font(.subheadline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(
+                    isOn ? Brand.gold.opacity(0.22) : Color(.secondarySystemBackground),
+                    in: Capsule()
+                )
+                .foregroundStyle(isOn ? Brand.gold : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isOn ? [.isSelected] : [])
+    }
+
+    /// The escape hatch for "I know it fits, I still will not eat it". Offered
+    /// only once something else is excluded, so the step stays short for the
+    /// majority who have no restrictions.
+    private var blockedFoodPicker: some View {
+        Menu {
+            ForEach(FoodCatalog.all) { food in
+                Button {
+                    withAnimation(.snappy) { model.toggleBlocked(food.id) }
+                } label: {
+                    Label(
+                        food.name,
+                        systemImage: model.blockedFoodIDs.contains(food.id) ? "checkmark" : "circle"
+                    )
+                }
+            }
+        } label: {
+            Label(
+                model.blockedFoodIDs.isEmpty
+                    ? "Never suggest a specific food"
+                    : "\(model.blockedFoodIDs.count) food\(model.blockedFoodIDs.count == 1 ? "" : "s") blocked",
+                systemImage: "hand.raised.fill"
+            )
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Brand.gold)
+        }
+    }
+
+    private var removalSummary: String {
+        let removed = model.excludedFoodCount
+        guard removed > 0 else { return "Nothing is excluded at the moment." }
+        return "Removes \(removed) of \(FoodCatalog.all.count) ingredients from every suggestion."
+    }
+
+
     private var budgetStep: some View {
         VStack(spacing: 16) {
             ForEach(BudgetTier.allCases) { tier in
@@ -343,23 +515,27 @@ struct OnboardingView: View {
             CardContainer {
                 VStack(alignment: .leading, spacing: 12) {
                     LabeledContent("Daily food allowance") {
-                        Text(DisplayFormat.currency(model.dailyFoodBudget))
+                        Text(prices.format(model.dailyFoodBudget))
                             .font(.headline)
                             .monospacedDigit()
                     }
 
                     Slider(
                         value: Binding(
-                            get: { model.dailyFoodBudget },
-                            set: { model.budgetWasEdited(to: $0) }
+                            get: { prices.convert(model.dailyFoodBudget) },
+                            set: { model.budgetWasEdited(to: prices.toStorage($0)) }
                         ),
-                        in: 3...60,
+                        in: prices.convert(3)...prices.convert(60),
                         step: 0.50
                     )
                     .tint(Brand.gold)
 
-                    Text("About \(DisplayFormat.currency(model.weeklyBudget)) a week.")
+                    Text("About \(prices.format(model.weeklyBudget)) a week.")
                         .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("Ingredient prices are US supermarket averages and every meal cost is built from them. If you entered a currency and rate, amounts are converted at your rate and are approximate.")
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
 
                     if let warning = model.budgetWarning {
@@ -445,21 +621,21 @@ struct OnboardingView: View {
                     HStack {
                         StatTile(
                             title: "Per day",
-                            value: DisplayFormat.currency(model.dailyFoodBudget),
+                            value: prices.format(model.dailyFoodBudget),
                             caption: model.budgetTier.displayName,
                             systemImage: "calendar",
                             tint: Brand.underBudget
                         )
                         StatTile(
                             title: "Per week",
-                            value: DisplayFormat.currency(model.weeklyBudget),
+                            value: prices.format(model.weeklyBudget),
                             caption: "7 days",
                             systemImage: "cart.fill",
                             tint: Brand.underBudget
                         )
                         StatTile(
                             title: "Per 1,000 kcal",
-                            value: DisplayFormat.currency(model.costPer1000Calories),
+                            value: prices.format(model.costPer1000Calories),
                             caption: "Energy cost",
                             systemImage: "flame.fill",
                             tint: Brand.underBudget
@@ -473,6 +649,12 @@ struct OnboardingView: View {
                     }
                 }
             }
+
+            // Gaps in this combination, shown while the choices behind them can
+            // still be changed: a target that the budget cannot fund, or a
+            // restriction that has removed every protein source there was.
+            PlanGapsCard(report: model.feasibility, title: "Before you commit")
+
 
             HealthDisclaimerCard(isAcknowledged: $model.hasAcknowledgedDisclaimer)
 

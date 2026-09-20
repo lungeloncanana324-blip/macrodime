@@ -1,4 +1,4 @@
-# project.yml — XcodeGen
+# project.yml (XcodeGen)
 #
 # Generates MacroDime.xcodeproj from this file. It exists because creating an
 # Xcode project normally requires a Mac; this is a text file, so the project can
@@ -7,7 +7,7 @@
 # On a macOS machine (or CI runner):
 #     brew install xcodegen && xcodegen generate
 #
-# Never commit the generated .xcodeproj — it is derived from this file.
+# Never commit the generated .xcodeproj, it is derived from this file.
 
 name: MacroDime
 
@@ -48,17 +48,27 @@ targets:
         SUPPORTS_MACCATALYST: NO
 
         # Info.plist is synthesised from build settings rather than kept as a
-        # separate file — fewer things to hand-edit without Xcode.
+        # separate file, fewer things to hand-edit without Xcode.
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: MacroDime
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
 
+        # Declaring this up front keeps the export-compliance question out of
+        # every single TestFlight upload. MacroDime uses no encryption beyond
+        # HTTPS that it never actually calls.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+
         # REQUIRED: the progress-photo picker hard-crashes without this string.
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: >-
           MacroDime saves progress photos with your measurements. Photos stay on
           this device and are never uploaded.
+
+        # PrivacyInfo.xcprivacy is picked up from MacroDime/Resources by the
+        # `sources` entry above. It declares no data collection and the one
+        # required-reason API the app uses (UserDefaults, reason CA92.1).
+        # App Store Connect refuses builds without it.
 
   MacroDimeTests:
     type: bundle.unit-test

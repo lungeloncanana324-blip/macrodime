@@ -13,7 +13,7 @@ import Foundation
 
 /// One ingredient's total requirement across every meal it appears in.
 struct GroceryLine: Identifiable, Hashable, Sendable {
-    /// The catalogue id — stable, and the natural aggregation key.
+    /// The catalogue id, stable, and the natural aggregation key.
     var id: String { food.id }
     let food: FoodSnapshot
     /// Sum of servings across the whole plan.
@@ -26,7 +26,7 @@ struct GroceryLine: Identifiable, Hashable, Sendable {
     var estimatedCost: Double { food.costPerServing * totalServings }
     var totalGrams: Double { food.servingGrams * totalServings }
 
-    /// e.g. `"6 × 1 can (142 g drained)"` — what to actually put in the trolley.
+    /// e.g. `"6 × 1 can (142 g drained)"`, what to actually put in the trolley.
     var quantityDescription: String {
         let quantity = totalServings.formatted(.number.precision(.fractionLength(0...2)))
         return "\(quantity) × \(food.servingDescription)"

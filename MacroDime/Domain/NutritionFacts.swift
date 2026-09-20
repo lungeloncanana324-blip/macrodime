@@ -8,7 +8,7 @@
 
 import Foundation
 
-/// Atwater factors — kilocalories per gram of each macronutrient.
+/// Atwater factors, kilocalories per gram of each macronutrient.
 enum AtwaterFactor {
     static let protein: Double = 4
     static let carbohydrate: Double = 4
@@ -65,7 +65,7 @@ struct NutritionFacts: Hashable, Codable, Sendable {
     }
 
     /// Rounds every field to whole numbers for display. Never use the result
-    /// for further arithmetic — rounding error compounds across a week of meals.
+    /// for further arithmetic, rounding error compounds across a week of meals.
     var rounded: NutritionFacts {
         NutritionFacts(
             calories: calories.rounded(),

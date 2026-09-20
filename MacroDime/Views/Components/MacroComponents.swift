@@ -14,7 +14,7 @@ import SwiftUI
 /// Semantic colours for the four tracked quantities, drawn from `Brand`.
 ///
 /// Gold is the brand and carries calories, the headline metric; the three
-/// macros sit in food colours. Green and red are deliberately absent here —
+/// macros sit in food colours. Green and red are deliberately absent here,
 /// they are reserved for budget status, so the cost tracker reads at a glance.
 /// Colour is never the only signal: every ring carries a label and a value.
 extension MacroAxis {
@@ -55,7 +55,7 @@ extension MacroAxis {
 
 /// A single circular progress indicator.
 ///
-/// Over-target is shown explicitly — the ring fills, then a second, darker arc
+/// Over-target is shown explicitly, the ring fills, then a second, darker arc
 /// sweeps the overflow. Clamping at 100% would hide exactly the state the user
 /// most needs to see.
 @MainActor
@@ -144,6 +144,9 @@ struct MacroRingStat: View {
 /// the allowance, and states the overage in words as well as colour.
 @MainActor
 struct BudgetMeter: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
     let spent: Double
     let allowance: Double
     var showsCaption: Bool = true
@@ -159,18 +162,18 @@ struct BudgetMeter: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(DisplayFormat.currency(spent))
+                Text(prices.format(spent))
                     .font(.title2.weight(.semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                Text("of \(DisplayFormat.currency(allowance))")
+                Text("of \(prices.format(allowance))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Label(
                     isOver
-                        ? "\(DisplayFormat.currency(spent - allowance)) over"
-                        : "\(DisplayFormat.currency(allowance - spent)) left",
+                        ? "\(prices.format(spent - allowance)) over"
+                        : "\(prices.format(allowance - spent)) left",
                     systemImage: isOver ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
                 )
                 .font(.caption.weight(.medium))
@@ -199,7 +202,7 @@ struct BudgetMeter: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Food budget")
         .accessibilityValue(
-            "\(DisplayFormat.currency(spent)) spent of \(DisplayFormat.currency(allowance))"
+            "\(prices.format(spent)) spent of \(prices.format(allowance))"
         )
     }
 }

@@ -146,7 +146,7 @@ enum ActivityLevel: String, Codable, CaseIterable, Identifiable, Sendable {
 /// The financial constraint the meal plan must respect.
 ///
 /// `rank` exists so the swap engine can ask "is this candidate at or below the
-/// ceiling I was given?" without hard-coding case comparisons — adding a third
+/// ceiling I was given?" without hard-coding case comparisons, adding a third
 /// tier later requires no change to the engine.
 enum BudgetTier: String, Codable, CaseIterable, Identifiable, Sendable, Comparable {
     /// Cheap staples: oats, eggs, lentils, canned tuna, chicken thighs, frozen veg.

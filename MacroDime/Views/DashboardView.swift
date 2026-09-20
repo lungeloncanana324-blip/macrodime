@@ -5,7 +5,7 @@
 //  The daily home screen: macro rings, the cost tracker, a low-cost swap
 //  preview, and the non-BMI progress tracker.
 //
-//  The two halves of the product sit side by side here on purpose — macros and
+//  The two halves of the product sit side by side here on purpose, macros and
 //  money are one decision, not two.
 //
 
@@ -14,6 +14,9 @@ import SwiftData
 
 @MainActor
 struct DashboardView: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.modelContext) private var context
     @Query private var profiles: [UserProfile]
@@ -30,6 +33,7 @@ struct DashboardView: View {
                 LazyVStack(spacing: 16) {
                     macroCard
                     budgetCard
+                    planGapsCard
                     swapPreviewCard
                     progressCard
                     powerhousesCard
@@ -58,7 +62,7 @@ struct DashboardView: View {
                     model.apply(swap, context: context)
                 }
             }
-            .task(id: profile?.id) {
+            .task(id: profile?.updatedAt) {
                 model.load(context: context, profile: profile)
             }
             .refreshable {
@@ -144,7 +148,7 @@ struct DashboardView: View {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Brand.underBudget)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(DisplayFormat.currency(model.potentialSavings)) of swaps available")
+                            Text("\(prices.format(model.potentialSavings)) of swaps available")
                                 .font(.subheadline.weight(.medium))
                             Text("Same macros, cheaper ingredients")
                                 .font(.caption)
@@ -160,6 +164,16 @@ struct DashboardView: View {
     // MARK: Swap preview
 
     @ViewBuilder
+    // MARK: Plan gaps
+
+    /// What is wrong with today as it stands. Sits under the budget meter
+    /// because the two answer the same question from different angles: the meter
+    /// says what was spent, this says what the money failed to buy.
+    private var planGapsCard: some View {
+        PlanGapsCard(report: model.audit, title: "Today's gaps")
+    }
+
+
     private var swapPreviewCard: some View {
         let swaps = model.meals.compactMap { model.swapPreview(for: $0) }
             .sorted { $0.savings > $1.savings }
@@ -171,7 +185,7 @@ struct DashboardView: View {
                         Label("Low-cost swap", systemImage: "arrow.triangle.2.circlepath")
                             .font(.headline)
                         Spacer()
-                        Text("Save \(DisplayFormat.currency(best.savings))")
+                        Text("Save \(prices.format(best.savings))")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Brand.underBudget)
                     }
@@ -191,7 +205,7 @@ struct DashboardView: View {
                             Text(swap.replacement.food.name)
                                 .fontWeight(.medium)
                             Spacer(minLength: 4)
-                            Text(DisplayFormat.currency(swap.savings))
+                            Text(prices.format(swap.savings))
                                 .font(.caption.weight(.medium))
                                 .monospacedDigit()
                                 .foregroundStyle(Brand.underBudget)
@@ -238,7 +252,7 @@ struct DashboardView: View {
                     HStack(alignment: .top, spacing: 12) {
                         StatTile(
                             title: "Waist",
-                            value: latest.waistCm.map { DisplayFormat.number($0, decimals: 1) + " cm" } ?? "—",
+                            value: latest.waistCm.map { DisplayFormat.number($0, decimals: 1) + " cm" } ?? "\u{2014}",
                             caption: waistCaption(for: profile),
                             systemImage: "ruler.fill",
                             tint: Brand.measurement
@@ -247,7 +261,7 @@ struct DashboardView: View {
                             title: "Weight",
                             value: latest.weightKg.map {
                                 DisplayFormat.weight(kilograms: $0, system: profile.measurementSystem)
-                            } ?? "—",
+                            } ?? "\u{2014}",
                             caption: latest.recordedAt.formatted(.dateTime.month().day()),
                             systemImage: "scalemass.fill",
                             tint: Brand.measurement
@@ -290,7 +304,7 @@ struct DashboardView: View {
         CardContainer {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Budget powerhouses").font(.headline)
-                Text("Most protein per \(DisplayFormat.currency(1)) on your tier")
+                Text("Most protein per \(prices.format(1)) on your tier")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -315,6 +329,9 @@ struct DashboardView: View {
 /// by side, because "cheaper" is only acceptable if the macros hold.
 @MainActor
 struct SwapReviewSheet: View {
+    /// How money is shown here: which currency, and at what rate.
+    @Environment(\.currency) private var prices
+
 
     @Environment(\.dismiss) private var dismiss
     let swap: MealSwap
@@ -334,7 +351,7 @@ struct SwapReviewSheet: View {
                                     HStack(spacing: 8) {
                                         Text(portionSwap.replacement.quantityDescription)
                                         Text("·")
-                                        Text("saves \(DisplayFormat.currency(portionSwap.savings))")
+                                        Text("saves \(prices.format(portionSwap.savings))")
                                             .foregroundStyle(Brand.underBudget)
                                     }
                                     .font(.caption)
@@ -360,7 +377,7 @@ struct SwapReviewSheet: View {
                                         Text(adjustment.headline)
                                             .font(.subheadline)
                                         Spacer(minLength: 4)
-                                        Text(DisplayFormat.currency(adjustment.costDelta))
+                                        Text(prices.format(adjustment.costDelta))
                                             .font(.caption)
                                             .monospacedDigit()
                                             .foregroundStyle(.secondary)
@@ -374,8 +391,8 @@ struct SwapReviewSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Effect").font(.headline)
                             comparisonRow("Cost",
-                                          DisplayFormat.currency(swap.original.cost),
-                                          DisplayFormat.currency(swap.swapped.cost),
+                                          prices.format(swap.original.cost),
+                                          prices.format(swap.swapped.cost),
                                           isGood: true)
                             Divider()
                             macroComparison(.calories)
@@ -386,7 +403,7 @@ struct SwapReviewSheet: View {
                     }
 
                     Label(
-                        "Worst-case macro change: \(DisplayFormat.percent(swap.worstDrift)) — inside the 10% tolerance.",
+                        "Worst-case macro change: \(DisplayFormat.percent(swap.worstDrift)), inside the 10% tolerance.",
                         systemImage: "checkmark.seal.fill"
                     )
                     .font(.caption)
@@ -395,7 +412,7 @@ struct SwapReviewSheet: View {
                 .padding(16)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Save \(DisplayFormat.currency(swap.savings))")
+            .navigationTitle("Save \(prices.format(swap.savings))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

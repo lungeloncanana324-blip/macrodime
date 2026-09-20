@@ -3,7 +3,7 @@
 //  MacroDimeTests
 //
 //  Covers the swap engine's contract: cheaper, within tolerance, same category,
-//  never trading up — plus the two bugs that made the feature not work at all
+//  never trading up, plus the two bugs that made the feature not work at all
 //  (energy-dominance anchoring, and substitution without rebalancing).
 //
 
@@ -66,7 +66,7 @@ final class BudgetFoodEngineTests: XCTestCase {
         }
     }
 
-    // MARK: Anchoring — regression
+    // MARK: Anchoring: regression
 
     /// Salmon carries more energy as fat (153 kcal) than as protein (136 kcal).
     /// An "anchor on the most energetic macro" rule therefore matched salmon on

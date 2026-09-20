@@ -24,6 +24,8 @@ final class UserProfileViewModel {
         case bodyMetrics
         case goal
         case activity
+        case diet
+        case routine
         case budget
         case summary
 
@@ -35,6 +37,8 @@ final class UserProfileViewModel {
             case .bodyMetrics: "About You"
             case .goal: "Your Goal"
             case .activity: "Activity Level"
+            case .diet: "What You Eat"
+            case .routine: "How You Eat"
             case .budget: "Your Budget"
             case .summary: "Your Plan"
             }
@@ -45,9 +49,11 @@ final class UserProfileViewModel {
             case .welcome: "Real nutrition targets that fit what you can actually spend"
             case .bodyMetrics: "Used to calculate your metabolic rate"
             case .goal: "This sets your calorie adjustment and protein target"
-            case .activity: "Be honest — most people overestimate this one"
+            case .activity: "Be honest, most people overestimate this one"
+            case .diet: "So the plan never suggests something you will not eat"
+            case .routine: "How many meals, and how much cooking you will actually do"
             case .budget: "Every meal suggestion respects this constraint"
-            case .summary: "Here is what the numbers say"
+            case .summary: "Here is what the numbers say, and what does not add up"
             }
         }
     }
@@ -68,6 +74,69 @@ final class UserProfileViewModel {
     var goal: FitnessGoal = .fatLoss
     var activity: ActivityLevel = .lightlyActive
 
+    // MARK: Dietary draft
+    //
+    // Defaults here are the *asked* defaults, not the model's unconstrained
+    // ones: the wizard presents "3 meals, under 30 minutes" as the common
+    // answer, and changing either is one tap. `DietaryProfile`'s own defaults
+    // stay unconstrained so that a profile which never answers filters nothing.
+
+    var dietaryPattern: DietaryPattern = .omnivore
+    var foodExclusions: Set<FoodExclusion> = []
+    var blockedFoodIDs: Set<String> = []
+    var eatingSchedule: EatingSchedule = .threeMeals
+    var prepEffort: PrepEffort = .standard
+    var mealsOutPerWeek: Int = 0
+
+    /// The draft as the engine's filter sees it.
+    var dietaryProfile: DietaryProfile {
+        DietaryProfile(
+            pattern: dietaryPattern,
+            exclusions: foodExclusions,
+            blockedFoodIDs: blockedFoodIDs,
+            schedule: eatingSchedule,
+            prepEffort: prepEffort,
+            mealsOutPerWeek: mealsOutPerWeek
+        )
+    }
+
+    /// Foods the current answers would remove, for the live count on the diet
+    /// step. Cheap enough to recompute on every toggle: 57 comparisons.
+    var excludedFoodCount: Int {
+        DietaryFilter.rejected(FoodCatalog.all, under: dietaryProfile).count
+    }
+
+    func toggle(_ exclusion: FoodExclusion) {
+        if foodExclusions.contains(exclusion) {
+            foodExclusions.remove(exclusion)
+        } else {
+            foodExclusions.insert(exclusion)
+        }
+    }
+
+    func toggleBlocked(_ foodID: String) {
+        if blockedFoodIDs.contains(foodID) {
+            blockedFoodIDs.remove(foodID)
+        } else {
+            blockedFoodIDs.insert(foodID)
+        }
+    }
+
+    /// What the summary step shows before anything is committed: the gaps in
+    /// this combination of target, budget and restrictions.
+    var feasibility: PlanAudit.Report {
+        PlanAudit.feasibility(
+            targets: prescription.targets,
+            dailyBudgetUSD: dailyFoodBudget,
+            dietary: dietaryProfile,
+            currency: currency
+        )
+    }
+
+    /// The currency the wizard displays amounts in. Held on the draft because
+    /// onboarding runs before a profile exists to read it from.
+    var currency: CurrencySettings = .usd
+
     /// Changed through `selectBudgetTier(_:)`, never assigned directly.
     ///
     /// This deliberately carries no `didSet`. The `@Observable` macro rewrites
@@ -83,7 +152,7 @@ final class UserProfileViewModel {
     var dailyFoodBudget: Double = BudgetTier.strict.defaultDailyAllowance
     private(set) var hasEditedBudget = false
 
-    /// Switches tier, carrying that tier's default allowance across — until the
+    /// Switches tier, carrying that tier's default allowance across, until the
     /// user edits the number themselves, after which their value stands.
     func selectBudgetTier(_ tier: BudgetTier) {
         budgetTier = tier
@@ -127,7 +196,7 @@ final class UserProfileViewModel {
         )
     }
 
-    /// Live preview. Recomputed on every keystroke — it is a few dozen
+    /// Live preview. Recomputed on every keystroke, it is a few dozen
     /// floating-point operations, well inside a frame budget.
     var prescription: BodyScienceEngine.Prescription {
         BodyScienceEngine.prescribeUnchecked(for: scienceInput)
@@ -140,7 +209,7 @@ final class UserProfileViewModel {
     /// Estimated weekly spend at the chosen daily allowance.
     var weeklyBudget: Double { dailyFoodBudget * 7 }
 
-    /// What the allowance buys per calorie — the number that tells a user
+    /// What the allowance buys per calorie, the number that tells a user
     /// whether their budget and their goal are compatible at all.
     var costPer1000Calories: Double {
         let calories = prescription.targets.calories
@@ -148,26 +217,21 @@ final class UserProfileViewModel {
         return dailyFoodBudget / (calories / 1_000)
     }
 
-    /// Cheapest plausible daily cost of hitting the protein target on the
-    /// selected tier, used to warn when the budget simply cannot work.
-    func minimumViableDailyCost(engine: BudgetFoodEngine = BudgetFoodEngine()) -> Double {
-        let powerhouses = engine.budgetPowerhouses(tier: budgetTier, limit: 3)
-        guard let best = powerhouses.max(by: { $0.proteinPerCurrencyUnit < $1.proteinPerCurrencyUnit }),
-              best.proteinPerCurrencyUnit > 0
-        else { return 0 }
-
-        // Protein from the single most efficient source, plus a flat allowance
-        // for the carbs, fats and vegetables around it. Deliberately rough —
-        // it exists to catch "this budget is impossible", not to plan meals.
-        let proteinCost = prescription.targets.protein / best.proteinPerCurrencyUnit
-        let everythingElse = 2.50
-        return proteinCost + everythingElse
+    /// Cheapest plausible daily cost of hitting the protein target with the
+    /// foods this profile may actually eat.
+    ///
+    /// Delegates to `PlanAudit.minimumDailyCostUSD` so the number quoted here
+    /// and the number in the feasibility gap are computed once, from the same
+    /// rule. A vegan who excludes soy sees a different figure from an omnivore,
+    /// which is the point.
+    func minimumViableDailyCost() -> Double {
+        PlanAudit.minimumDailyCostUSD(targets: prescription.targets, dietary: dietaryProfile)?.cost ?? 0
     }
 
     var budgetWarning: String? {
         let minimum = minimumViableDailyCost()
         guard minimum > 0, dailyFoodBudget < minimum else { return nil }
-        return "Hitting \(DisplayFormat.grams(prescription.targets.protein)) of protein a day costs around \(DisplayFormat.currency(minimum)) even on the cheapest staples. Consider raising your allowance."
+        return "Hitting \(DisplayFormat.grams(prescription.targets.protein)) of protein a day costs around \(DisplayFormat.currency(minimum)) even on the cheapest foods you allow. Consider raising your allowance."
     }
 
     // MARK: Navigation
@@ -213,6 +277,14 @@ final class UserProfileViewModel {
         sex = profile.sex
         goal = profile.goal
         activity = profile.activity
+        let diet = profile.dietaryProfile
+        dietaryPattern = diet.pattern
+        foodExclusions = diet.exclusions
+        blockedFoodIDs = diet.blockedFoodIDs
+        eatingSchedule = diet.schedule
+        prepEffort = diet.prepEffort
+        mealsOutPerWeek = diet.mealsOutPerWeek
+        currency = profile.currency
         hasAcknowledgedDisclaimer = profile.hasAcknowledgedHealthDisclaimer
         hasEditedBudget = true      // an existing budget is the user's, not a default
         budgetTier = profile.budgetTier
@@ -235,6 +307,8 @@ final class UserProfileViewModel {
         profile.activity = activity
         profile.budgetTier = budgetTier
         profile.dailyFoodBudget = dailyFoodBudget
+        profile.dietaryProfile = dietaryProfile
+        profile.currency = currency
         profile.hasCompletedOnboarding = true
         profile.hasAcknowledgedHealthDisclaimer = hasAcknowledgedDisclaimer
         profile.touch()

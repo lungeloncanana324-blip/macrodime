@@ -3,7 +3,7 @@
 //  MacroDime
 //
 //  The single user record, plus the non-BMI progress measurements attached to
-//  it. Enums are stored as raw strings with typed computed accessors — the
+//  it. Enums are stored as raw strings with typed computed accessors, the
 //  stored property is what SwiftData persists and predicates against, the
 //  computed one is what the rest of the app uses.
 //
@@ -44,9 +44,39 @@ final class UserProfile {
 
     // MARK: Budget
 
-    /// Daily food allowance in the user's currency. Seeded from the tier
-    /// default at onboarding, then owned by the user.
+    /// Daily food allowance, **in USD**: the currency the catalogue is priced
+    /// in. Storage is single-currency on purpose, so a budget and the meal costs
+    /// it is compared against never disagree about units.
+    ///
+    /// The user types it in whatever currency they display (`currency`), and the
+    /// number is converted on the way in. See `Money`.
     var dailyFoodBudget: Double
+
+    // MARK: Currency
+    /// The currency amounts are rendered in. Defaults to the catalogue's own
+    /// currency, so a user who never opens the setting sees honest USD figures
+    /// rather than a local symbol on a dollar amount.
+    var currencyCodeRaw: String = PriceBook.currencyCode
+
+    /// Units of `currencyCodeRaw` per 1 USD, entered by the user. 1 means no
+    /// conversion is being claimed.
+    var currencyUnitsPerUSD: Double = 1
+
+    // MARK: Diet
+    //
+    // Stored as raw strings and string arrays, like every other enum in this
+    // file, and read through `dietaryProfile` below. All defaulted, so the
+    // properties are additive for SwiftData's lightweight migration.
+
+    var dietaryPatternRaw: String = DietaryPattern.omnivore.rawValue
+    var foodExclusionsRaw: [String] = []
+    /// Catalogue ids the user has banned outright.
+    var blockedFoodIDs: [String] = []
+    var eatingScheduleRaw: String = EatingSchedule.threeMeals.rawValue
+    /// Defaults to the unconstrained answer, not to "under 30 minutes": a
+    /// profile that has never been asked must not filter the catalogue.
+    var prepEffortRaw: String = PrepEffort.unlimited.rawValue
+    var mealsOutPerWeek: Int = 0
 
     // MARK: Progress
 
@@ -66,6 +96,8 @@ final class UserProfile {
         activity: ActivityLevel = .lightlyActive,
         budgetTier: BudgetTier = .strict,
         measurementSystem: MeasurementSystem = .metric,
+        currency: CurrencySettings = .usd,
+        diet: DietaryProfile = .unrestricted,
         dailyFoodBudget: Double? = nil,
         hasCompletedOnboarding: Bool = false,
         hasAcknowledgedHealthDisclaimer: Bool = false
@@ -84,6 +116,14 @@ final class UserProfile {
         self.activityRaw = activity.rawValue
         self.budgetTierRaw = budgetTier.rawValue
         self.measurementSystemRaw = measurementSystem.rawValue
+        self.currencyCodeRaw = currency.displayCode
+        self.currencyUnitsPerUSD = currency.unitsPerUSD
+        self.dietaryPatternRaw = diet.pattern.rawValue
+        self.foodExclusionsRaw = diet.exclusions.map(\.rawValue).sorted()
+        self.blockedFoodIDs = diet.blockedFoodIDs.sorted()
+        self.eatingScheduleRaw = diet.schedule.rawValue
+        self.prepEffortRaw = diet.prepEffort.rawValue
+        self.mealsOutPerWeek = diet.mealsOutPerWeek
         self.dailyFoodBudget = dailyFoodBudget ?? budgetTier.defaultDailyAllowance
         self.measurements = []
     }
@@ -118,6 +158,48 @@ final class UserProfile {
         set { measurementSystemRaw = newValue.rawValue }
     }
 
+    /// Upper-cased on write so `"zar"` and `"ZAR"` can never be two currencies.
+    var currencyCode: String {
+        get { currencyCodeRaw.isEmpty ? PriceBook.currencyCode : currencyCodeRaw }
+        set {
+            let code = newValue.uppercased()
+            currencyCodeRaw = code.isEmpty ? PriceBook.currencyCode : code
+        }
+    }
+
+    /// How this profile wants money shown. Read by the views through the
+    /// environment, and the single place conversion is configured.
+    var currency: CurrencySettings {
+        get { CurrencySettings(displayCode: currencyCode, unitsPerUSD: currencyUnitsPerUSD) }
+        set {
+            currencyCode = newValue.displayCode
+            currencyUnitsPerUSD = newValue.unitsPerUSD
+        }
+    }
+
+    /// The dietary rules this profile plans by. Unknown raw values degrade to
+    /// the unrestricted default rather than crashing.
+    var dietaryProfile: DietaryProfile {
+        get {
+            DietaryProfile(
+                pattern: DietaryPattern(rawValue: dietaryPatternRaw) ?? .omnivore,
+                exclusions: Set(foodExclusionsRaw.compactMap(FoodExclusion.init(rawValue:))),
+                blockedFoodIDs: Set(blockedFoodIDs),
+                schedule: EatingSchedule(rawValue: eatingScheduleRaw) ?? .threeMeals,
+                prepEffort: PrepEffort(rawValue: prepEffortRaw) ?? .unlimited,
+                mealsOutPerWeek: mealsOutPerWeek
+            )
+        }
+        set {
+            dietaryPatternRaw = newValue.pattern.rawValue
+            foodExclusionsRaw = newValue.exclusions.map(\.rawValue).sorted()
+            blockedFoodIDs = newValue.blockedFoodIDs.sorted()
+            eatingScheduleRaw = newValue.schedule.rawValue
+            prepEffortRaw = newValue.prepEffort.rawValue
+            mealsOutPerWeek = newValue.mealsOutPerWeek
+        }
+    }
+
     // MARK: Derived
 
     /// The engine input this profile represents.
@@ -132,7 +214,7 @@ final class UserProfile {
         )
     }
 
-    /// Current prescription. Recomputed on demand — it is a handful of
+    /// Current prescription. Recomputed on demand, it is a handful of
     /// floating-point operations, so caching it would buy nothing and risk the
     /// targets going stale after a weight update.
     var prescription: BodyScienceEngine.Prescription {
@@ -163,7 +245,7 @@ final class UserProfile {
 // MARK: - Body Measurement
 
 /// A non-BMI progress entry. Waist circumference and photos are tracked
-/// precisely because BMI cannot distinguish muscle from fat — these are the
+/// precisely because BMI cannot distinguish muscle from fat, these are the
 /// metrics that actually move when body composition changes.
 @Model
 final class BodyMeasurement {
@@ -199,7 +281,7 @@ final class BodyMeasurement {
         self.photoData = photoData
     }
 
-    /// Waist-to-hip ratio when both are recorded — a better health signal than
+    /// Waist-to-hip ratio when both are recorded, a better health signal than
     /// BMI alone, and the reason hip is captured at all.
     var waistToHipRatio: Double? {
         guard let waistCm, let hipCm, hipCm > 0 else { return nil }

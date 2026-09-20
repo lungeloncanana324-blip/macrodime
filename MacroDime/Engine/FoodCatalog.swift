@@ -9,10 +9,13 @@
 //  Macro values are per the stated serving and are drawn from standard
 //  reference data (USDA FoodData Central for whole foods, typical label values
 //  for packaged goods). Prices are US national-average supermarket prices and
-//  are deliberately approximate — they exist to *rank* ingredients against each
-//  other, which is all the swap engine needs. They are not converted to local
-//  currency; a shipping build should either localise this table or let the user
-//  edit `costPerServing` per item.
+//  are deliberately approximate: they exist to *rank* ingredients against each
+//  other, which is all the swap engine needs. They are denominated in USD and
+//  are never relabelled into another currency; see `Money` for how a user's own
+//  currency is handled.
+//
+//  Dietary traits and preparation times are held in lookup tables at the end of
+//  the file rather than in each declaration, and applied by `annotated(_:)`.
 //
 
 import Foundation
@@ -21,7 +24,12 @@ enum FoodCatalog {
 
     /// Every curated ingredient, in no particular order. `all` is computed once
     /// and cached by the `static let`, so repeated engine calls do not rebuild it.
-    static let all: [FoodSnapshot] = proteins + carbohydrates + fats + vegetables + fruits + dairy + condiments
+    ///
+    /// Each declaration is passed through `annotated(_:)`, which fills in the
+    /// dietary traits and preparation time from the tables at the foot of this
+    /// file. Declarations therefore stay about food and macros.
+    static let all: [FoodSnapshot] = (proteins + carbohydrates + fats + vegetables + fruits + dairy + condiments)
+        .map(annotated)
 
     /// Fast lookup by stable catalogue id.
     static let byID: [String: FoodSnapshot] = Dictionary(
@@ -493,6 +501,11 @@ enum FoodCatalog {
     ]
 
     // MARK: - Vegetables
+    //
+    // Every vegetable names its culinary family explicitly. `SwapGroup.default`
+    // deliberately maps `.vegetable` to `.unclassified`, which matches nothing,
+    // so a vegetable added without a family has no substitutes rather than every
+    // other vegetable. `testEveryVegetableHasACulinaryFamily` enforces that.
 
     private static let vegetables: [FoodSnapshot] = [
         FoodSnapshot(
@@ -500,6 +513,7 @@ enum FoodCatalog {
             name: "Frozen Mixed Vegetables",
             section: .frozen,
             category: .vegetable,
+            swapGroup: .mixedFrozen,
             costTier: .strict,
             costPerServing: 0.45,
             servingDescription: "150 g",
@@ -512,6 +526,7 @@ enum FoodCatalog {
             name: "Frozen Broccoli Florets",
             section: .frozen,
             category: .vegetable,
+            swapGroup: .cruciferous,
             costTier: .strict,
             costPerServing: 0.50,
             servingDescription: "150 g",
@@ -524,6 +539,7 @@ enum FoodCatalog {
             name: "Green Cabbage",
             section: .produce,
             category: .vegetable,
+            swapGroup: .leafyGreen,
             costTier: .strict,
             costPerServing: 0.30,
             servingDescription: "150 g",
@@ -536,6 +552,7 @@ enum FoodCatalog {
             name: "Carrots",
             section: .produce,
             category: .vegetable,
+            swapGroup: .root,
             costTier: .strict,
             costPerServing: 0.25,
             servingDescription: "150 g",
@@ -548,6 +565,7 @@ enum FoodCatalog {
             name: "Yellow Onion",
             section: .produce,
             category: .vegetable,
+            swapGroup: .allium,
             costTier: .strict,
             costPerServing: 0.25,
             servingDescription: "1 medium (110 g)",
@@ -560,6 +578,7 @@ enum FoodCatalog {
             name: "Fresh Broccoli",
             section: .produce,
             category: .vegetable,
+            swapGroup: .cruciferous,
             costTier: .moderate,
             costPerServing: 1.10,
             servingDescription: "150 g",
@@ -572,6 +591,7 @@ enum FoodCatalog {
             name: "Baby Spinach",
             section: .produce,
             category: .vegetable,
+            swapGroup: .leafyGreen,
             costTier: .moderate,
             costPerServing: 1.25,
             servingDescription: "100 g",
@@ -584,6 +604,7 @@ enum FoodCatalog {
             name: "Bell Pepper",
             section: .produce,
             category: .vegetable,
+            swapGroup: .fruiting,
             costTier: .moderate,
             costPerServing: 1.10,
             servingDescription: "1 medium (120 g)",
@@ -596,6 +617,7 @@ enum FoodCatalog {
             name: "Asparagus",
             section: .produce,
             category: .vegetable,
+            swapGroup: .stem,
             costTier: .moderate,
             costPerServing: 2.20,
             servingDescription: "150 g",
@@ -758,4 +780,149 @@ enum FoodCatalog {
             isSwapCandidate: false
         )
     ]
+
+    // MARK: - Dietary annotations
+    //
+    // Two lookup tables instead of two more arguments in all 57 literals. The
+    // food declarations above stay about food and macros; the dietary view of
+    // the same catalogue is readable, and auditable, in one screen.
+    //
+    // The join is `annotated(_:)`, applied to `all` below. Tests enforce both
+    // halves of the contract: every id named here must exist in the catalogue,
+    // and every food that is not plant-only must carry its traits.
+
+    /// Foods that are not plant-only, or that carry a declarable allergen.
+    ///
+    /// A missing entry means "plant-only, no declarable allergen", which is the
+    /// correct reading for every vegetable, fruit, oil and spice in the list.
+    private static let traitTable: [String: FoodTraits] = [
+        // Protein anchors
+        "eggs-large": [.egg],
+        "eggs-pasture-organic": [.egg],
+        "canned-tuna-water": [.fish],
+        "canned-sardines": [.fish],
+        "salmon-fillet": [.fish],
+        "cod-fillet": [.fish],
+        "shrimp": [.shellfish],
+        "chicken-thighs": [.meat],
+        "chicken-drumsticks": [.meat],
+        "chicken-breast": [.meat],
+        "turkey-breast-deli": [.meat],
+        "ground-beef-80-20": [.meat, .redMeat],
+        "ground-beef-93-7": [.meat, .redMeat],
+        "sirloin-steak": [.meat, .redMeat],
+        "pork-shoulder": [.meat, .redMeat, .pork],
+        "firm-tofu": [.soy],
+        "whey-isolate": [.dairy],
+        "greek-yogurt-nonfat": [.dairy],
+
+        // Carbohydrate bases
+        "dried-pasta": [.gluten],
+        "whole-wheat-bread": [.gluten],
+        "sourdough-bread": [.gluten],
+        "sprouted-grain-bread": [.gluten],
+        // Rolled oats carry no gluten of their own. They are frequently milled
+        // on shared lines, which is a supply-chain fact this catalogue cannot
+        // know, so they are not flagged; the disclaimer covers it.
+
+        // Fat sources
+        "peanut-butter": [.nuts],
+        "almonds": [.nuts],
+
+        // Dairy
+        "whole-milk": [.dairy],
+        "cottage-cheese": [.dairy],
+        "cheddar-block": [.dairy],
+        "skyr": [.dairy],
+
+        // Condiments
+        // Most soy sauce is brewed with wheat, so it is flagged for both. A
+        // user avoiding gluten loses a condiment, which is the safe direction.
+        "soy-sauce": [.soy, .gluten]
+    ]
+
+    /// Active preparation time in minutes, where the category default is wrong.
+    private static let prepTable: [String: Int] = [
+        // Proteins
+        "whey-isolate": 1,
+        "canned-tuna-water": 0,
+        "canned-sardines": 0,
+        "turkey-breast-deli": 0,
+        "greek-yogurt-nonfat": 0,
+        "eggs-large": 8,
+        "eggs-pasture-organic": 8,
+        "shrimp": 10,
+        "ground-beef-80-20": 12,
+        "ground-beef-93-7": 12,
+        "firm-tofu": 15,
+        "cod-fillet": 15,
+        "sirloin-steak": 15,
+        "salmon-fillet": 18,
+        "chicken-breast": 20,
+        "canned-black-beans": 0,
+        "canned-chickpeas": 0,
+        "chicken-thighs": 25,
+        "chicken-drumsticks": 30,
+        "dried-lentils": 40,
+        "pork-shoulder": 90,
+
+        // Carbohydrates
+        "whole-wheat-bread": 0,
+        "sourdough-bread": 0,
+        "sprouted-grain-bread": 0,
+        "rolled-oats": 6,
+        "dried-pasta": 12,
+        "white-rice": 20,
+        "potatoes": 25,
+        "quinoa": 25,
+        "sweet-potato": 30,
+        "brown-rice": 35,
+
+        // Vegetables
+        "frozen-mixed-vegetables": 0,
+        "frozen-broccoli": 0,
+        "baby-spinach": 2,
+        "bell-pepper": 5,
+        "cabbage": 8,
+        "asparagus": 8,
+        "onion": 8,
+        "carrots": 10,
+        "fresh-broccoli": 10,
+
+        // Fruit
+        "frozen-berries": 0,
+        "banana": 1,
+        "apple": 1,
+        "fresh-blueberries": 1,
+
+        // Fats
+        "avocado": 2
+    ]
+
+    /// Default preparation time by category, for foods absent from `prepTable`.
+    /// Oils, spices, dairy and fruit need no work; a protein or a grain does.
+    private static func defaultPrepMinutes(for category: FoodCategory, section: GrocerySection) -> Int {
+        switch category {
+        case .proteinAnchor: 20
+        case .carbBase: 15
+        case .fatSource: 0
+        case .vegetable: section == .frozen ? 0 : 5
+        case .fruit: 1
+        case .dairy: 0
+        case .condiment: 0
+        }
+    }
+
+    /// Applies the two tables above to one food declaration.
+    private static func annotated(_ food: FoodSnapshot) -> FoodSnapshot {
+        food.annotated(
+            traits: traitTable[food.id] ?? [],
+            prepMinutes: prepTable[food.id] ?? defaultPrepMinutes(for: food.category, section: food.section)
+        )
+    }
+
+    /// Ids named in the annotation tables, for the catalogue tests to audit.
+    static var annotatedIDs: Set<String> {
+        Set(traitTable.keys).union(prepTable.keys)
+    }
 }
