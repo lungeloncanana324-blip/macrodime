@@ -385,7 +385,7 @@ struct PortionSwapSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 6)
-            Text("−\(prices.format(option.savings))")
+            Text("Saves \(prices.format(option.savings))")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(Brand.underBudget)

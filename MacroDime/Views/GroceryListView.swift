@@ -197,7 +197,7 @@ struct GroceryListView: View {
 
     private var weekLabel: String {
         let end = Calendar.current.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
-        return "\(weekStart.formatted(.dateTime.month(.abbreviated).day())) – \(end.formatted(.dateTime.month(.abbreviated).day()))"
+        return "\(weekStart.formatted(.dateTime.month(.abbreviated).day()))-\(end.formatted(.dateTime.month(.abbreviated).day()))"
     }
 
     private func shiftWeek(by weeks: Int) {

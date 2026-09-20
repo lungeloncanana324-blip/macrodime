@@ -252,7 +252,7 @@ struct DashboardView: View {
                     HStack(alignment: .top, spacing: 12) {
                         StatTile(
                             title: "Waist",
-                            value: latest.waistCm.map { DisplayFormat.number($0, decimals: 1) + " cm" } ?? "\u{2014}",
+                            value: latest.waistCm.map { DisplayFormat.number($0, decimals: 1) + " cm" } ?? "Not set",
                             caption: waistCaption(for: profile),
                             systemImage: "ruler.fill",
                             tint: Brand.measurement
@@ -261,7 +261,7 @@ struct DashboardView: View {
                             title: "Weight",
                             value: latest.weightKg.map {
                                 DisplayFormat.weight(kilograms: $0, system: profile.measurementSystem)
-                            } ?? "\u{2014}",
+                            } ?? "Not set",
                             caption: latest.recordedAt.formatted(.dateTime.month().day()),
                             systemImage: "scalemass.fill",
                             tint: Brand.measurement

@@ -41,7 +41,7 @@ final class BodyScienceEngineTests: XCTestCase {
     // MARK: BMR (Mifflin-St Jeor)
 
     func testMaleBMR() {
-        // 10(80) + 6.25(180) − 5(30) + 5 = 800 + 1125 − 150 + 5 = 1780
+        // 10(80) + 6.25(180) - 5(30) + 5 = 800 + 1125 - 150 + 5 = 1780
         XCTAssertEqual(
             BodyScienceEngine.basalMetabolicRate(weightKg: 80, heightCm: 180, age: 30, sex: .male),
             1780,
@@ -50,7 +50,7 @@ final class BodyScienceEngineTests: XCTestCase {
     }
 
     func testFemaleBMR() {
-        // 10(65) + 6.25(165) − 5(30) − 161 = 650 + 1031.25 − 150 − 161 = 1370.25
+        // 10(65) + 6.25(165) - 5(30) - 161 = 650 + 1031.25 - 150 - 161 = 1370.25
         XCTAssertEqual(
             BodyScienceEngine.basalMetabolicRate(weightKg: 65, heightCm: 165, age: 30, sex: .female),
             1370.25,
@@ -61,7 +61,7 @@ final class BodyScienceEngineTests: XCTestCase {
     func testSexConstantIsTheOnlyDifference() {
         let male = BodyScienceEngine.basalMetabolicRate(weightKg: 70, heightCm: 170, age: 40, sex: .male)
         let female = BodyScienceEngine.basalMetabolicRate(weightKg: 70, heightCm: 170, age: 40, sex: .female)
-        XCTAssertEqual(male - female, 166, accuracy: accuracy)  // +5 − (−161)
+        XCTAssertEqual(male - female, 166, accuracy: accuracy)  // +5 - (-161)
     }
 
     // MARK: TDEE
@@ -102,7 +102,7 @@ final class BodyScienceEngineTests: XCTestCase {
         XCTAssertEqual(result.targets.protein, 160, accuracy: accuracy)
         // Fat at 25% of 2207.2 kcal ÷ 9 = 61.3111 g
         XCTAssertEqual(result.targets.fat, 61.3111, accuracy: 0.001)
-        // Carbs take the remainder: (2207.2 − 640 − 551.8) ÷ 4 = 253.85 g
+        // Carbs take the remainder: (2207.2 - 640 - 551.8) ÷ 4 = 253.85 g
         XCTAssertEqual(result.targets.carbs, 253.85, accuracy: accuracy)
 
         XCTAssertTrue(result.adjustments.isEmpty, "A textbook case should need no overrides")

@@ -54,7 +54,7 @@ without writing anything, the user sees the preview before it is committed.
 | Quantity | Formula |
 | --- | --- |
 | BMI | `weight_kg / height_m²` |
-| BMR | Mifflin-St Jeor: `10·kg + 6.25·cm − 5·age + (+5 male / −161 female)` |
+| BMR | Mifflin-St Jeor: `10·kg + 6.25·cm - 5·age + (+5 male / -161 female)` |
 | TDEE | `BMR × activity` (1.2 / 1.375 / 1.55 / 1.725) |
 | Target | Fat loss `TDEE × 0.80`; muscle gain `TDEE × 1.08` |
 | Protein | 2.0 g/kg cutting, 1.8 g/kg gaining |
@@ -66,7 +66,7 @@ Worked example: 80 kg, 180 cm, 30 y, male, moderately active, fat loss:
 ```
 BMR    1780 kcal      BMI 24.69
 TDEE   2759 kcal      (1780 × 1.55)
-Target 2207.2 kcal    (−551.8, a 20% deficit)
+Target 2207.2 kcal    (-551.8, a 20% deficit)
        160 g protein · 253.85 g carbs · 61.31 g fat
 ```
 

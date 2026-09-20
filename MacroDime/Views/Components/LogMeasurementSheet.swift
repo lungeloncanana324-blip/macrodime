@@ -120,7 +120,7 @@ struct LogMeasurementSheet: View {
     private func measurementField(_ title: String, text: Binding<String>, unit: String) -> some View {
         LabeledContent(title) {
             HStack(spacing: 6) {
-                TextField("\u{2014}", text: text)
+                TextField("Optional", text: text)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 100)

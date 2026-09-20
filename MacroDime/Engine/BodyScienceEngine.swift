@@ -183,7 +183,7 @@ struct BodyScienceEngine {
     }
 
     /// Basal Metabolic Rate, Mifflin-St Jeor:
-    /// `10 × kg + 6.25 × cm − 5 × age + constant` (+5 male, −161 female).
+    /// `10 × kg + 6.25 × cm - 5 × age + constant` (+5 male, -161 female).
     static func basalMetabolicRate(
         weightKg: Double,
         heightCm: Double,
