@@ -46,6 +46,34 @@ jobs:
           set -o pipefail
           swift test 2>&1 | tee swift.log
 
+      # ── A malformed workflow or Codemagic config fails on the provider's side,
+      #    with an error that does not say which line is wrong, and no GitHub
+      #    workflow warns you. python3 is on the runner, so this costs a second.
+      - name: Lint the YAML files
+        id: yamllint
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import glob, sys, yaml
+
+          files = sorted(
+              glob.glob('.github/workflows/*.yml')
+              + glob.glob('docs/*.yml')
+              + ['codemagic.yaml', 'project.yml']
+          )
+
+          bad = 0
+          for name in files:
+              try:
+                  yaml.safe_load(open(name))
+                  print(f"OK    {name}")
+              except Exception as error:
+                  print(f"error: {name}: {error}")
+                  bad = 1
+          sys.exit(bad)
+          PY
+
       - name: Install XcodeGen
         if: always()
         run: brew install xcodegen
@@ -118,6 +146,7 @@ jobs:
             echo "| Step | Result |"
             echo "| --- | --- |"
             echo "| SwiftPM engine tests | ${{ steps.spm.outcome }} |"
+            echo "| YAML lint | ${{ steps.yamllint.outcome }} |"
             echo "| XcodeGen | ${{ steps.xcodegen.outcome }} |"
             echo "| Privacy manifest | ${{ steps.privacy.outcome }} |"
             echo "| xcodebuild build | ${{ steps.xcbuild.outcome }} |"
@@ -162,7 +191,8 @@ jobs:
         if: always()
         run: |
           FAILED=0
-          for r in "${{ steps.spm.outcome }}" "${{ steps.xcodegen.outcome }}" \
+          for r in "${{ steps.spm.outcome }}" "${{ steps.yamllint.outcome }}" \
+                   "${{ steps.xcodegen.outcome }}" \
                    "${{ steps.privacy.outcome }}" \
                    "${{ steps.xcbuild.outcome }}" "${{ steps.xctest.outcome }}"; do
             [ "$r" = "failure" ] && FAILED=1

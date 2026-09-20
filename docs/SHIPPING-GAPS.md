@@ -14,7 +14,7 @@ App Store Connect will accept a build at all.
 | 1 | **Apple Developer Program** | Enrolment with legal name, tax and banking details | Lungelo | $99/yr, 1 to 3 days |
 | 2 | **Privacy policy URL** | Text is written and now publishable: `docs/privacy-policy.md` renders as a page once Pages is on. Three clicks, written up in `docs/index.md` | Lungelo | 10 min |
 | 3 | **Support URL** | `docs/support.md` does the same job, including the questions a reviewer would ask and the refund route | Lungelo | done, host it |
-| 4 | **Screenshots** | Automated by `.github/workflows/screenshots.yml`, which shoots 6.9 inch and 6.7 inch sets. Not yet run, because it needs the app to launch | CI, unverified | 20 min of CI |
+| 4 | **Screenshots, and the first run** | `screenshots.yml` now launches the app, checks it stays alive, prints its stdout and stderr, and captures each tab. Not yet run: it needs a push. See `docs/TESTING.md`, layer 4 | Lungelo | 20 min of CI |
 | 5 | **A TestFlight build that runs** | `codemagic.yaml` has the signed workflow ready. This is the first time the app will ever execute, so budget for runtime fixes | Lungelo and CI | half a day |
 | 6 | **App Store Connect record** | Bundle id `com.lungelo.macrodime`, name, category (Health and Fitness), age rating questionnaire | Lungelo | 45 min |
 | 7 | **Age rating** | Answer yes to medical and treatment information. That is the honest answer for an app that prescribes a calorie deficit, and it lands at 12+ | Lungelo | 5 min |
@@ -25,7 +25,7 @@ App Store Connect will accept a build at all.
 
 | # | Gap | Severity | Note |
 | --- | --- | --- | --- |
-| 10 | **The SwiftUI half has never run** | High | The engines have 101 tests and are trustworthy. Onboarding, the seeder, the first SwiftData save and every screen are unexercised. This is the largest unknown in the project |
+| 10 | **The SwiftUI half has never run** | High | The engines have 101 tests and are trustworthy. Onboarding, the seeder, the first SwiftData save and every screen are unexercised. `screenshots.yml` is the place this gets settled, and `docs/TESTING.md` says what to look for when it fails |
 | 11 | **Disclaimer text is unreviewed** | High | `HealthDisclaimer` is general knowledge written by a developer, not checked by a clinician or a lawyer. The support link is NEDIC, which is Canadian; SADAG is the South African equivalent and a better fit |
 | 12 | **Currency localisation is manual** | Medium, bug fixed | The reported bug (a device-locale symbol on a USD amount) is fixed: the catalogue currency is explicit, and a user can enter their own currency and rate in Settings. There is deliberately no bundled rate table, because an invented rate is worse than no conversion. Real localisation means localising the price table itself |
 | 13 | **Fibre, sodium and micronutrients are not tracked** | Medium | Disclosed in the plan audit rather than hidden. Fibre would be the most valuable next engine feature, and it needs catalogue data that is not authored yet |

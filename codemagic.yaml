@@ -10,7 +10,7 @@ workflows:
 
   # ── Stage 1: compile and test. No signing, no Apple account needed. ────────
   build-only:
-    name: MacroDime: build and test
+    name: "MacroDime: build and test"
     instance_type: mac_mini_m2
     max_build_duration: 30
     environment:
@@ -41,7 +41,7 @@ workflows:
 
   # ── Stage 2: signed build straight to TestFlight. Needs the $99 membership. ─
   testflight:
-    name: MacroDime: TestFlight
+    name: "MacroDime: TestFlight"
     instance_type: mac_mini_m2
     max_build_duration: 45
     integrations:

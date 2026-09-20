@@ -1,15 +1,17 @@
-name: Screenshots
+name: Run the app and capture screenshots
 
-# Produces the App Store screenshots on a hosted macOS runner.
+# The only place this app has ever been run. A hosted macOS runner boots a
+# simulator, installs the build, launches it, checks that it is still alive, and
+# captures each tab.
 #
-# This is the only way to get them without a Mac: the simulator is driven
-# entirely from the command line, the app is launched with
-# `-MacroDimeScreenshots` so the store has a real day in it, and each tab is
-# captured with `simctl io screenshot`. A simulator cannot be tapped from a
-# script, so the tab is chosen with `-MacroDimeTab <n>` at launch instead.
+# Two jobs in one: it produces the App Store screenshots, and it is the first
+# end-to-end test the project has (launching the app is what opens its SwiftData
+# store and renders a screen). A crash fails the job and prints the app's own
+# stdout and stderr, rather than uploading a black screenshot and calling it a
+# success.
 #
-# Manual trigger only. Screenshots are needed once or twice a release, and macOS
-# minutes are the expensive kind.
+# Manual trigger only: macOS minutes are the expensive kind, and this is needed
+# once or twice per release.
 
 on:
   workflow_dispatch:
@@ -25,7 +27,7 @@ concurrency:
 
 jobs:
   capture:
-    name: Capture screenshots
+    name: Launch the app and capture screenshots
     runs-on: macos-15
     timeout-minutes: 45
 
@@ -70,20 +72,63 @@ jobs:
           # Dark appearance: the palette was designed against it.
           xcrun simctl ui "$DEVICE" appearance dark
 
-      - name: Capture every tab
+      # ── The actual first-run test. Launching the app is the only thing that
+      #    opens its SwiftData store, seeds the catalogue and renders a screen,
+      #    so this step is where a launch crash is caught. A crash would
+      #    otherwise produce a black screenshot and a green job.
+      - name: Launch, verify it stays alive, and capture every tab
         run: |
           set -euo pipefail
-          mkdir -p screenshots
+          mkdir -p screenshots logs
           names=("today" "plan" "groceries" "settings")
+
           for tab in 0 1 2 3; do
             label="${names[$tab]}"
             xcrun simctl terminate "$DEVICE" "$BUNDLE_ID" || true
-            xcrun simctl launch "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab"
-            sleep 6
+
+            # --stdout and --stderr put the app's own output in files. If it
+            # fatalErrors, the message is here rather than in a crash report
+            # nobody reads.
+            xcrun simctl launch \
+              --stdout="logs/${label}.out" \
+              --stderr="logs/${label}.err" \
+              "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab" \
+              > "logs/${label}.launch"
+
+            sleep 8
+
+            # Still running? A sheet, a black screen or an empty list is a bug
+            # worth looking at, but a dead process is a hard stop.
+            if ! xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$BUNDLE_ID"; then
+              echo "::error::$BUNDLE_ID died after launch on the $label screen. This is the first-run risk this workflow exists to catch."
+              echo "----- app stdout -----"; cat "logs/${label}.out" || true
+              echo "----- app stderr -----"; cat "logs/${label}.err" || true
+              exit 1
+            fi
+
             xcrun simctl io "$DEVICE" screenshot "screenshots/${label}.png"
-            echo "captured ${label}.png"
+            echo "captured ${label}.png ($(cat "logs/${label}.launch"))"
           done
+
+          echo
+          echo "----- app stdout from the last launch -----"
+          cat logs/settings.out || true
           ls -la screenshots
+
+      - name: Print any crash report
+        if: failure()
+        run: |
+          REPORTS=~/Library/Logs/DiagnosticReports
+          found=$(find "$REPORTS" -maxdepth 1 -name '*.ips' -newermt '-15 minutes' 2>/dev/null | head -3)
+          if [ -z "$found" ]; then
+            echo "No crash report in $REPORTS, so the app did not die of a signal. Check stderr above."
+          else
+            for file in $found; do
+              echo "----- $file -----"
+              head -80 "$file"
+            done
+          fi
+
 
       - name: Note the pixel sizes
         run: |
@@ -91,9 +136,14 @@ jobs:
             echo "$file: $(sips -g pixelWidth -g pixelHeight "$file" | tail -2 | tr -d ' \n')"
           done
 
-      - name: Upload screenshots
+      - name: Upload screenshots and logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-store-screenshots
-          path: screenshots/*.png
-          if-no-files-found: error
+          path: |
+            screenshots/*.png
+            logs/*
+          # Warn rather than error: on a failed run the logs are the useful
+          # artifact, and the launch step has already failed the job.
+          if-no-files-found: warn

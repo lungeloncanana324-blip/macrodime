@@ -309,6 +309,7 @@ and captures every tab, which doubles as the first real end-to-end test.
 which lists what blocks a submission, what is unverified, and what it costs. The
 App Store listing copy and the App Privacy answers are in
 [`docs/app-store-listing.md`](docs/app-store-listing.md), the privacy policy text
-in [`docs/privacy-policy.md`](docs/privacy-policy.md), and the pricing decision
-with the plan for the subscription build in
-[`docs/MONETISATION.md`](docs/MONETISATION.md).
+in [`docs/privacy-policy.md`](docs/privacy-policy.md), the pricing decision with
+the plan for the subscription build in
+[`docs/MONETISATION.md`](docs/MONETISATION.md), and where each kind of test runs,
+with commands, in [`docs/TESTING.md`](docs/TESTING.md).
