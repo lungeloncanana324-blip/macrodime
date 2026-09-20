@@ -5,7 +5,7 @@
 //
 //  A SwiftPM package covering the *pure* layer only: `Domain/` and `Engine/`
 //  import nothing but Foundation, so they compile and test on any platform
-//  Swift runs on — Linux and CI included.
+//  Swift runs on (Linux and CI included).
 //
 //  The rest of the app (`App/`, `Views/`, `ViewModels/`, `Persistence/`) depends
 //  on SwiftUI, SwiftData and UIKit, which are Apple-platform-only and closed
@@ -18,7 +18,7 @@
 //      swift build
 //      swift test
 //
-//  Xcode users can ignore this file entirely — the app target is built from the
+//  Xcode users can ignore this file entirely: the app target is built from the
 //  Xcode project described in README.md.
 //
 

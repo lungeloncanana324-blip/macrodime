@@ -5,7 +5,7 @@ name: iOS
 # or Linux, without owning a Mac.
 #
 # Simulator builds need no code signing, so this runs with no Apple Developer
-# account and no certificates — the cheapest way to find and fix compile errors
+# account and no certificates, the cheapest way to find and fix compile errors
 # before paying for anything.
 #
 # Every step runs even when an earlier one fails, and the job is failed at the
@@ -49,6 +49,25 @@ jobs:
       - name: Install XcodeGen
         if: always()
         run: brew install xcodegen
+
+      # ── The privacy manifest is a hard requirement since spring 2024, and a
+      #    malformed one is rejected at upload rather than at build. Linting it
+      #    here turns that into an ordinary build failure.
+      - name: Verify the privacy manifest
+        id: privacy
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          MANIFEST=MacroDime/Resources/PrivacyInfo.xcprivacy
+          test -f "$MANIFEST" || { echo "error: $MANIFEST is missing"; exit 1; }
+          plutil -lint "$MANIFEST"
+          echo "--- manifest content ---"
+          plutil -p "$MANIFEST"
+          # No collected data and no tracking: the app has no networking code,
+          # and this is what App Privacy answers must match.
+          plutil -p "$MANIFEST" | grep -q '"NSPrivacyTracking" => 0' \
+            || { echo "error: NSPrivacyTracking must be false"; exit 1; }
 
       - name: Generate Xcode project
         id: xcodegen
@@ -100,6 +119,7 @@ jobs:
             echo "| --- | --- |"
             echo "| SwiftPM engine tests | ${{ steps.spm.outcome }} |"
             echo "| XcodeGen | ${{ steps.xcodegen.outcome }} |"
+            echo "| Privacy manifest | ${{ steps.privacy.outcome }} |"
             echo "| xcodebuild build | ${{ steps.xcbuild.outcome }} |"
             echo "| xcodebuild test | ${{ steps.xctest.outcome }} |"
             echo ""
@@ -108,7 +128,6 @@ jobs:
           grep -hE "(error|warning): " swift.log xcodegen.log build.log test.log 2>/dev/null \
             | sed 's|/Users/runner/work/macrodime/macrodime/||' \
             | sort -u > diags.txt || true
-
           ERRS=$(grep -c "error: " diags.txt 2>/dev/null || echo 0)
           {
             echo "## Diagnostics ($ERRS errors)"
@@ -144,6 +163,7 @@ jobs:
         run: |
           FAILED=0
           for r in "${{ steps.spm.outcome }}" "${{ steps.xcodegen.outcome }}" \
+                   "${{ steps.privacy.outcome }}" \
                    "${{ steps.xcbuild.outcome }}" "${{ steps.xctest.outcome }}"; do
             [ "$r" = "failure" ] && FAILED=1
           done

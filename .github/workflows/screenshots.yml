@@ -1,0 +1,99 @@
+name: Screenshots
+
+# Produces the App Store screenshots on a hosted macOS runner.
+#
+# This is the only way to get them without a Mac: the simulator is driven
+# entirely from the command line, the app is launched with
+# `-MacroDimeScreenshots` so the store has a real day in it, and each tab is
+# captured with `simctl io screenshot`. A simulator cannot be tapped from a
+# script, so the tab is chosen with `-MacroDimeTab <n>` at launch instead.
+#
+# Manual trigger only. Screenshots are needed once or twice a release, and macOS
+# minutes are the expensive kind.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: Simulator device to shoot on
+        required: false
+        default: iPhone 16 Pro Max
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Capture screenshots
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    env:
+      BUNDLE_ID: com.lungelo.macrodime
+      DEVICE: ${{ github.event.inputs.device || 'iPhone 16 Pro Max' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      - name: Boot the simulator
+        run: |
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          # Status bar in a fixed, flattering state: 9:41, full battery, full
+          # signal. Available since Xcode 15.
+          xcrun simctl status_bar "$DEVICE" override \
+            --time "09:41" --batteryState charged --batteryLevel 100 \
+            --wifiBars 3 --cellularBars 4
+
+      - name: Build for the simulator
+        run: |
+          xcodebuild build \
+            -project MacroDime.xcodeproj \
+            -scheme MacroDime \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Install the app
+        run: |
+          APP=$(find build/Build/Products -maxdepth 3 -name 'MacroDime.app' | head -1)
+          test -n "$APP" || { echo "No .app was produced"; exit 1; }
+          xcrun simctl install "$DEVICE" "$APP"
+          # Dark appearance: the palette was designed against it.
+          xcrun simctl ui "$DEVICE" appearance dark
+
+      - name: Capture every tab
+        run: |
+          set -euo pipefail
+          mkdir -p screenshots
+          names=("today" "plan" "groceries" "settings")
+          for tab in 0 1 2 3; do
+            label="${names[$tab]}"
+            xcrun simctl terminate "$DEVICE" "$BUNDLE_ID" || true
+            xcrun simctl launch "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab"
+            sleep 6
+            xcrun simctl io "$DEVICE" screenshot "screenshots/${label}.png"
+            echo "captured ${label}.png"
+          done
+          ls -la screenshots
+
+      - name: Note the pixel sizes
+        run: |
+          for file in screenshots/*.png; do
+            echo "$file: $(sips -g pixelWidth -g pixelHeight "$file" | tail -2 | tr -d ' \n')"
+          done
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: screenshots/*.png
+          if-no-files-found: error
