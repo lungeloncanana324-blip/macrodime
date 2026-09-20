@@ -12,8 +12,8 @@ App Store Connect will accept a build at all.
 | # | Gap | What it needs | Who | Cost |
 | --- | --- | --- | --- | --- |
 | 1 | **Apple Developer Program** | Enrolment with legal name, tax and banking details | Lungelo | $99/yr, 1 to 3 days |
-| 2 | **Privacy policy URL** | Apple requires a live URL. Text is written in `docs/privacy-policy.md`; host it (GitHub Pages is free) | Lungelo | 30 min |
-| 3 | **Support URL** | A page with a contact route. GitHub Pages or a mailto page is enough | Lungelo | 15 min |
+| 2 | **Privacy policy URL** | Text is written and now publishable: `docs/privacy-policy.md` renders as a page once Pages is on. Three clicks, written up in `docs/index.md` | Lungelo | 10 min |
+| 3 | **Support URL** | `docs/support.md` does the same job, including the questions a reviewer would ask and the refund route | Lungelo | done, host it |
 | 4 | **Screenshots** | Automated by `.github/workflows/screenshots.yml`, which shoots 6.9 inch and 6.7 inch sets. Not yet run, because it needs the app to launch | CI, unverified | 20 min of CI |
 | 5 | **A TestFlight build that runs** | `codemagic.yaml` has the signed workflow ready. This is the first time the app will ever execute, so budget for runtime fixes | Lungelo and CI | half a day |
 | 6 | **App Store Connect record** | Bundle id `com.lungelo.macrodime`, name, category (Health and Fitness), age rating questionnaire | Lungelo | 45 min |
@@ -34,6 +34,7 @@ App Store Connect will accept a build at all.
 | 16 | **English only, US-centric food** | Low | 57 US supermarket items. A South African launch needs local staples and prices: a content project, not a code change |
 | 17 | **No accessibility audit** | Low | Labels exist on rings, meters and cards. Largest Dynamic Type, and VoiceOver on the planner, have never been checked by a human |
 | 18 | **No undo for a swap** | Low | A swap applies immediately. The engine is conservative (10% macro tolerance) but a mistake has no one-tap reversal |
+| 19 | **No way to charge for it** | Decided, not built | Decided 2026-09-20: launch free with no in-app purchases, and add one StoreKit 2 subscription in a later build. Nothing about payments can be tested until the Paid Applications Agreement is active. The whole plan, including what stays free and the sandbox test list, is in `docs/MONETISATION.md` |
 
 ## 3. What is verified, and by what
 
@@ -76,5 +77,5 @@ be finished.
    Apple device, iOS is the one platform where the UI cannot be seen.
 2. Which market first: US prices and US foods, or South African staples and rand
    pricing? The currency mechanism now supports either; the catalogue holds one.
-3. Free, paid, or free with a paid tier? It changes the App Store Connect setup,
-   and Apple's rules on health apps and subscriptions differ.
+3. Pricing and monetisation: **resolved on 2026-09-20**, free at launch with one
+   StoreKit 2 subscription planned for a later build. See `docs/MONETISATION.md`.

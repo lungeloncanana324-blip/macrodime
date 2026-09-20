@@ -12,7 +12,7 @@ rather than writing. Character counts are respected where Apple enforces them.
 | Bundle id | `com.lungelo.macrodime` |
 | Primary category | Health and Fitness |
 | Secondary category | Food and Drink |
-| Price | to be decided (see `SHIPPING-GAPS.md`, question 3) |
+| Price | Free (no in-app purchases at launch; see `docs/MONETISATION.md`) |
 | Copyright | `2026 <legal name>` |
 
 ## Promotional text (170)
@@ -80,9 +80,12 @@ macro,budget,meal plan,protein,calorie,grocery,BMI,fat loss,cheap,high protein,n
 
 | Field | Value |
 | --- | --- |
-| Support URL | `https://github.com/lungeloncanana324-blip/macrodime/issues` |
-| Marketing URL | optional; the repo README works |
-| Privacy policy URL | required: host `docs/privacy-policy.md`, see the note at the foot of that file |
+| Support URL | `https://lungeloncanana324-blip.github.io/macrodime/support.html` |
+| Privacy policy URL | `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` |
+| Marketing URL | optional; leave blank or point at the repo README |
+
+Both URLs come from the `docs/` folder, published through GitHub Pages. The
+three-step setup is written at the top of `docs/index.md`.
 
 ## Age rating questionnaire
 

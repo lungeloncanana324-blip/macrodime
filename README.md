@@ -308,5 +308,7 @@ and captures every tab, which doubles as the first real end-to-end test.
 **Shipping readiness is tracked in [`docs/SHIPPING-GAPS.md`](docs/SHIPPING-GAPS.md)**,
 which lists what blocks a submission, what is unverified, and what it costs. The
 App Store listing copy and the App Privacy answers are in
-[`docs/app-store-listing.md`](docs/app-store-listing.md), and the privacy policy
-text is in [`docs/privacy-policy.md`](docs/privacy-policy.md).
+[`docs/app-store-listing.md`](docs/app-store-listing.md), the privacy policy text
+in [`docs/privacy-policy.md`](docs/privacy-policy.md), and the pricing decision
+with the plan for the subscription build in
+[`docs/MONETISATION.md`](docs/MONETISATION.md).

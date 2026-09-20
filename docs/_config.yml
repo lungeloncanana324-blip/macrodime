@@ -1,0 +1,12 @@
+# Jekyll configuration for GitHub Pages.
+#
+# Every Markdown file in this folder becomes a page, which is how the two URLs
+# App Store Connect requires are served without a separate site:
+#   /privacy-policy.html
+#   /support.html
+#
+# A built-in Pages theme keeps it readable without any HTML of ours to maintain.
+
+title: MacroDime
+description: Nutrition targets that fit what you can actually spend.
+theme: jekyll-theme-minimal
