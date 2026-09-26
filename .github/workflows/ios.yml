@@ -48,31 +48,29 @@ jobs:
 
       # ── A malformed workflow or Codemagic config fails on the provider's side,
       #    with an error that does not say which line is wrong, and no GitHub
-      #    workflow warns you. python3 is on the runner, so this costs a second.
+      #    workflow warns you. Ruby, not Python: the runner's python3 has no
+      #    yaml module, so the first version of this step failed on every run,
+      #    and continue-on-error hid it. Ruby ships YAML in its standard library.
       - name: Lint the YAML files
         id: yamllint
         if: always()
         continue-on-error: true
         run: |
-          python3 - <<'PY'
-          import glob, sys, yaml
-
-          files = sorted(
-              glob.glob('.github/workflows/*.yml')
-              + glob.glob('docs/*.yml')
-              + ['codemagic.yaml', 'project.yml']
-          )
-
-          bad = 0
-          for name in files:
-              try:
-                  yaml.safe_load(open(name))
-                  print(f"OK    {name}")
-              except Exception as error:
-                  print(f"error: {name}: {error}")
-                  bad = 1
-          sys.exit(bad)
-          PY
+          ruby -ryaml -e '
+            files = (Dir[".github/workflows/*.yml"] + Dir["docs/*.yml"] +
+                     ["codemagic.yaml", "project.yml"]).sort
+            bad = false
+            files.each do |name|
+              begin
+                YAML.parse_stream(File.read(name))
+                puts "OK    #{name}"
+              rescue => error
+                puts "error: #{name}: #{error.message}"
+                bad = true
+              end
+            end
+            exit(bad ? 1 : 0)
+          '
 
       - name: Install XcodeGen
         if: always()

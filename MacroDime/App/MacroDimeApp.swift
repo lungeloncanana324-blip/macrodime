@@ -183,7 +183,7 @@ struct SettingsView: View {
     private var currencySection: some View {
         Section {
             Picker("Show prices in", selection: currencyCodeBinding) {
-                ForEach(currencyOptions, id: \.self) { code in
+                ForEach(CurrencySettings.pickerOptions(current: profile.currencyCode), id: \.self) { code in
                     Text(code).tag(code)
                 }
             }

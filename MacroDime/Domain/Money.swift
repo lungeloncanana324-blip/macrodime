@@ -136,4 +136,20 @@ struct CurrencySettings: Hashable, Sendable {
     static func localeSuggestion(for locale: Locale = .current) -> String {
         (locale.currency?.identifier ?? PriceBook.currencyCode).uppercased()
     }
+
+    /// Codes offered alongside USD and the device's own currency. A short list
+    /// on purpose: every one of them still needs a rate the user types in.
+    static let commonCodes = ["ZAR", "GBP", "EUR", "CAD", "AUD", "NZD", "INR", "NGN", "KES"]
+
+    /// What the Settings picker lists, in order: the catalogue's USD, the
+    /// device's currency, the code already saved, then `commonCodes`, each once.
+    /// The saved code is always included, because a picker whose selection has
+    /// no matching row renders blank.
+    static func pickerOptions(current: String, locale: Locale = .current) -> [String] {
+        let candidates = [PriceBook.currencyCode, localeSuggestion(for: locale), current] + commonCodes
+        var seen = Set<String>()
+        return candidates
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
 }

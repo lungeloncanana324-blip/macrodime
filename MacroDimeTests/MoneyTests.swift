@@ -114,6 +114,22 @@ final class MoneyTests: XCTestCase {
         XCTAssertEqual(suggestion, suggestion.uppercased())
     }
 
+    func testPickerOptionsLeadWithUSDAndNeverRepeat() {
+        let options = CurrencySettings.pickerOptions(current: "ZAR", locale: Locale(identifier: "en_ZA"))
+        XCTAssertEqual(options.first, "USD")
+        XCTAssertEqual(options[1], "ZAR")
+        XCTAssertEqual(options.count, Set(options).count)
+    }
+
+    func testPickerOptionsAlwaysContainTheSavedCode() {
+        // A saved code outside the common list must still have a row, or the
+        // picker renders blank.
+        let options = CurrencySettings.pickerOptions(current: " chf ", locale: Locale(identifier: "en_US"))
+        XCTAssertEqual(options.filter { $0 == "CHF" }.count, 1)
+        XCTAssertEqual(options.filter { $0 == "USD" }.count, 1)
+        XCTAssertFalse(options.contains(""))
+    }
+
     func testRateIsNeverZeroSoArithmeticCannotDivideByIt() {
         let settings = CurrencySettings(displayCode: "ZAR", unitsPerUSD: 0)
         XCTAssertEqual(settings.unitsPerUSD, 1)
