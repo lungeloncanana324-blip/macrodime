@@ -132,8 +132,12 @@ jobs:
             sleep 8
 
             # Still running? A sheet, a black screen or an empty list is a bug
-            # worth looking at, but a dead process is a hard stop.
-            if ! xcrun simctl spawn "$DEVICE" launchctl list | grep -q "$BUNDLE_ID"; then
+            # worth looking at, but a dead process is a hard stop. The list is
+            # captured before searching it: piped into grep -q under pipefail,
+            # grep quits at the first match, launchctl dies of SIGPIPE, and a
+            # running app reads as a dead one (run 3 failed Settings that way).
+            services=$(xcrun simctl spawn "$DEVICE" launchctl list)
+            if ! grep -q "$BUNDLE_ID" <<< "$services"; then
               echo "::error::$BUNDLE_ID died after launch on the $label screen. This is the first-run risk this workflow exists to catch."
               echo "----- app stdout -----"; cat "logs/${label}.out" || true
               echo "----- app stderr -----"; cat "logs/${label}.err" || true
