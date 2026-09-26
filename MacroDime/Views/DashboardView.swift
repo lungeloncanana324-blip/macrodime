@@ -161,9 +161,6 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: Swap preview
-
-    @ViewBuilder
     // MARK: Plan gaps
 
     /// What is wrong with today as it stands. Sits under the budget meter
@@ -173,7 +170,9 @@ struct DashboardView: View {
         PlanGapsCard(report: model.audit, title: "Today's gaps")
     }
 
+    // MARK: Swap preview
 
+    @ViewBuilder
     private var swapPreviewCard: some View {
         let swaps = model.meals.compactMap { model.swapPreview(for: $0) }
             .sorted { $0.savings > $1.savings }
