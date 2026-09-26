@@ -62,18 +62,33 @@ Be clear-eyed about this: it is the real cost:
 |---|---|---|
 | See a compile error | seconds | 5-15 min round trip |
 | SwiftUI previews | yes | **no** |
-| Simulator, click around | yes | **no** |
+| Simulator, click around | yes | in a browser, via Appetize (below) |
 | Debugger, view hierarchy | yes | **no** |
-| See the UI at all | instantly | screenshots, or TestFlight on a real iPhone |
+| See the UI at all | instantly | screenshots, Appetize, or TestFlight on a real iPhone |
 
 Iterating on *layout* this way is genuinely painful. Fixing *compile errors* is
 perfectly fine. So: use CI to get it compiling and onto TestFlight, then judge
 the UI on a physical iPhone.
 
-**If you have no Apple device at all**, you are flying blind on the UI, and I'd
-think hard about whether iOS is the right first target. The `Domain/` and
+**If you have no Apple device at all**, Appetize is the only way to use the
+app before TestFlight, and it is still a simulator. The `Domain/` and
 `Engine/` layers are plain Swift with no Apple dependencies, the science and
 the swap algorithm would port to a web app you can actually see and iterate on.
+
+## Tapping through it in a browser (free, no Apple account)
+
+Appetize runs an iOS simulator build in a web page. The screenshot workflow
+already produces that build, so:
+
+1. Actions tab, **Run the app and capture screenshots**, Run workflow.
+2. When it finishes, download the `appetize-build` artifact from the run page.
+3. Unzip it once. Inside is `MacroDime.zip`: upload *that* file, unopened, at
+   appetize.io. GitHub wraps every artifact in its own zip, and the inner one
+   is the one that keeps the app's executable bit.
+
+It is a simulator on someone else's Mac, streamed to you: good for flows,
+copy and whether a screen crashes, not for speed, feel or anything touching
+the App Store. The free tier caps monthly minutes.
 
 ## Paid alternatives, if CI round trips get tiring
 

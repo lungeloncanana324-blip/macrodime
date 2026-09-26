@@ -72,6 +72,26 @@ jobs:
           # Dark appearance: the palette was designed against it.
           xcrun simctl ui "$DEVICE" appearance dark
 
+      # The same unsigned simulator build, packaged for Appetize, which runs it
+      # in a browser so the app can be tapped through without a Mac. Zipped
+      # with ditto here, not left to upload-artifact: the artifact zip drops
+      # the executable bit, and an .app without it will not launch. Packaged
+      # before the launch check so a crash that only happens in screenshot
+      # mode still leaves a build to try by hand.
+      - name: Package the build for Appetize
+        run: |
+          APP=$(find build/Build/Products -maxdepth 3 -name 'MacroDime.app' | head -1)
+          mkdir -p appetize
+          ditto -c -k --sequesterRsrc --keepParent "$APP" appetize/MacroDime.zip
+          ls -la appetize
+
+      - name: Upload the Appetize build
+        uses: actions/upload-artifact@v4
+        with:
+          name: appetize-build
+          path: appetize/MacroDime.zip
+          if-no-files-found: ignore
+
       # ── The actual first-run test. Launching the app is the only thing that
       #    opens its SwiftData store, seeds the catalogue and renders a screen,
       #    so this step is where a launch crash is caught. A crash would
