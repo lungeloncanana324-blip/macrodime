@@ -1,7 +1,8 @@
 # Shipping MacroDime: what is done, what is missing
 
 Written 2026-09-20, against `e515cbe` plus the vegetable, currency, dietary and
-onboarding work in this branch.
+onboarding work in this branch. Updated 2026-09-26 at `79c3a8c`, after the
+first compile of that work and the first launch of the app.
 
 This is a gap report, not a plan with dates. It is ordered by what actually
 blocks a submission, so the top of the list is the work that has to happen before
@@ -14,8 +15,8 @@ App Store Connect will accept a build at all.
 | 1 | **Apple Developer Program** | Enrolment with legal name, tax and banking details | Lungelo | $99/yr, 1 to 3 days |
 | 2 | **Privacy policy URL** | Text is written and now publishable: `docs/privacy-policy.md` renders as a page once Pages is on. Three clicks, written up in `docs/index.md` | Lungelo | 10 min |
 | 3 | **Support URL** | `docs/support.md` does the same job, including the questions a reviewer would ask and the refund route | Lungelo | done, host it |
-| 4 | **Screenshots, and the first run** | `screenshots.yml` now launches the app, checks it stays alive, prints its stdout and stderr, and captures each tab. Not yet run: it needs a push. See `docs/TESTING.md`, layer 4 | Lungelo | 20 min of CI |
-| 5 | **A TestFlight build that runs** | `codemagic.yaml` has the signed workflow ready. This is the first time the app will ever execute, so budget for runtime fixes | Lungelo and CI | half a day |
+| 4 | **Screenshots** | Done in principle: run `36270743631` of `screenshots.yml` launched the app on all four tabs and captured them at 1320x2868 (iPhone 16 Pro Max, the 6.9 inch size). Check them against the listing copy, and fix the quantity text (gap 20) before they go to the store | Lungelo | 10 min |
+| 5 | **A TestFlight build that runs** | `codemagic.yaml` has the signed workflow ready. The app has now launched in a simulator, so this is the first run on real hardware rather than the first run at all | Lungelo and CI | half a day |
 | 6 | **App Store Connect record** | Bundle id `com.lungelo.macrodime`, name, category (Health and Fitness), age rating questionnaire | Lungelo | 45 min |
 | 7 | **Age rating** | Answer yes to medical and treatment information. That is the honest answer for an app that prescribes a calorie deficit, and it lands at 12+ | Lungelo | 5 min |
 | 8 | **App Privacy answers** | "Data not collected" for every category, matching `PrivacyInfo.xcprivacy`. No account, no analytics, no network calls at all | Lungelo | 20 min |
@@ -25,7 +26,7 @@ App Store Connect will accept a build at all.
 
 | # | Gap | Severity | Note |
 | --- | --- | --- | --- |
-| 10 | **The SwiftUI half has never run** | High | The engines have 101 tests and are trustworthy. Onboarding, the seeder, the first SwiftData save and every screen are unexercised. `screenshots.yml` is the place this gets settled, and `docs/TESTING.md` says what to look for when it fails |
+| 10 | **The SwiftUI half has launched, but has not been used** | High | 2026-09-26: the app opens its SwiftData store, seeds demo data and renders Today, Plan, Groceries and Settings without a crash, and the 103 tests pass hosted inside it. Still unexercised: onboarding end to end, a first save from real input, the food picker, a swap, a sheet. Appetize is where to try those by hand (`BUILDING-WITHOUT-A-MAC.md`), and `docs/TESTING.md` says what to look for |
 | 11 | **Disclaimer text is unreviewed** | High | `HealthDisclaimer` is general knowledge written by a developer, not checked by a clinician or a lawyer. The support link is NEDIC, which is Canadian; SADAG is the South African equivalent and a better fit |
 | 12 | **Currency localisation is manual** | Medium, bug fixed | The reported bug (a device-locale symbol on a USD amount) is fixed: the catalogue currency is explicit, and a user can enter their own currency and rate in Settings. There is deliberately no bundled rate table, because an invented rate is worse than no conversion. Real localisation means localising the price table itself |
 | 13 | **Fibre, sodium and micronutrients are not tracked** | Medium | Disclosed in the plan audit rather than hidden. Fibre would be the most valuable next engine feature, and it needs catalogue data that is not authored yet |
@@ -35,30 +36,35 @@ App Store Connect will accept a build at all.
 | 17 | **No accessibility audit** | Low | Labels exist on rings, meters and cards. Largest Dynamic Type, and VoiceOver on the planner, have never been checked by a human |
 | 18 | **No undo for a swap** | Low | A swap applies immediately. The engine is conservative (10% macro tolerance) but a mistake has no one-tap reversal |
 | 19 | **No way to charge for it** | Decided, not built | Decided 2026-09-20: launch free with no in-app purchases, and add one StoreKit 2 subscription in a later build. Nothing about payments can be tested until the Paid Applications Agreement is active. The whole plan, including what stays free and the sandbox test list, is in `docs/MONETISATION.md` |
+| 20 | **Quantities read like arithmetic** | Medium, visible in every screenshot | The first screenshots show `1.5 × 2 large eggs` on the plan and `1 × 1 can (142 g drained)` on the grocery list, where a person writes "3 large eggs" and "1 can". `MealItem` and `GroceryLine` multiply a serving count into a free-text serving description; fixing it properly means giving servings a structured count and unit. Smaller, same family: Settings prints `1783 kcal` where Today prints `1,681` |
 
 ## 3. What is verified, and by what
 
 | Layer | Verified how | Confidence |
 | --- | --- | --- |
-| `Domain/`, `Engine/` | `swift test` on Linux, 101 tests, figures worked by hand | High |
-| `Persistence/`, `ViewModels/`, `Views/`, `App/` | `xcodebuild build` and `test` on `macos-15` in CI, plus `swiftc -parse` over every file | Compiles, never launched |
-| App behaviour | Nothing | None |
+| `Domain/`, `Engine/` | `swift test` on Linux and on `macos-15`, 103 tests, figures worked by hand | High |
+| `Persistence/`, `ViewModels/`, `Views/`, `App/` | `xcodebuild build` and `test` green on `macos-15` in CI (`5647a2c`), tests hosted in the app | Compiles and launches |
+| App behaviour | `screenshots.yml`: launches with demo data, stays alive on all four tabs | Launch only; nothing tapped yet |
 
-The distinction matters. "It compiles" means the types line up. It does not mean
-the food picker scrolls, that SwiftData opens its store, or that onboarding can
-be finished.
+The distinction matters. "It launches" means SwiftData opens its store and four
+screens render. It does not mean the food picker scrolls, that a swap applies,
+or that onboarding can be finished.
 
 ## 4. Recommended order
 
-1. Push this branch and let `.github/workflows/ios.yml` run. Fix what it reports.
-   Free, and it is the only compiler available.
-2. Run `.github/workflows/screenshots.yml`. Its output is both the store
-   screenshots and proof that the app launches and renders four screens without
-   crashing. The cheapest end-to-end test there is.
-3. Enrol, then run the `testflight` workflow in `codemagic.yaml` and put the app
+1. Done 2026-09-26: `ios.yml` is green. The first compile of the new screens
+   found two errors (a misplaced `@ViewBuilder`, a missing currency list), both
+   fixed.
+2. Done 2026-09-26: `screenshots.yml` is green. Getting there fixed two bugs in
+   the workflow itself, none in the app: relative log paths that stopped the
+   simulator spawning it, and a `grep -q` under `pipefail` that reported a live
+   app as dead.
+3. Tap through onboarding, a swap and the food picker in Appetize, using the
+   `appetize-build` artifact from the same run. Free, no Apple account.
+4. Enrol, then run the `testflight` workflow in `codemagic.yaml` and put the app
    on a phone. Fix what breaks on device.
-4. Review the disclaimer text and replace NEDIC with a local equivalent.
-5. Submit. Keep the App Store submission manual until the app has a week of real
+5. Review the disclaimer text and replace NEDIC with a local equivalent.
+6. Submit. Keep the App Store submission manual until the app has a week of real
    use behind it, which is what `codemagic.yaml` is already configured to do.
 
 ## 5. Costs
