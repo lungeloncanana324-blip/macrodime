@@ -133,7 +133,7 @@ enum FoodCatalog {
             category: .proteinAnchor,
             costTier: .strict,
             costPerServing: 0.90,
-            servingDescription: "170 g cup",
+            servingDescription: "1 tub (170 g)",
             servingGrams: 170,
             nutrition: NutritionFacts(calories: 100, protein: 17.3, carbs: 6.1, fat: 0.7),
             satietyIndex: 82
@@ -169,7 +169,7 @@ enum FoodCatalog {
             category: .proteinAnchor,
             costTier: .strict,
             costPerServing: 0.82,
-            servingDescription: "150 g block portion",
+            servingDescription: "150 g",
             servingGrams: 150,
             nutrition: NutritionFacts(calories: 173, protein: 17.3, carbs: 4.2, fat: 10.0),
             satietyIndex: 70
@@ -481,7 +481,7 @@ enum FoodCatalog {
             category: .fatSource,
             costTier: .moderate,
             costPerServing: 1.20,
-            servingDescription: "1/2 medium (100 g)",
+            servingDescription: "½ medium (100 g)",
             servingGrams: 100,
             nutrition: NutritionFacts(calories: 160, protein: 2.0, carbs: 8.5, fat: 14.7),
             satietyIndex: 65

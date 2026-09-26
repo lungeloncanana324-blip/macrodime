@@ -26,10 +26,9 @@ struct GroceryLine: Identifiable, Hashable, Sendable {
     var estimatedCost: Double { food.costPerServing * totalServings }
     var totalGrams: Double { food.servingGrams * totalServings }
 
-    /// e.g. `"6 × 1 can (142 g drained)"`, what to actually put in the trolley.
+    /// e.g. `"6 cans (852 g drained)"`, what to actually put in the trolley.
     var quantityDescription: String {
-        let quantity = totalServings.formatted(.number.precision(.fractionLength(0...2)))
-        return "\(quantity) × \(food.servingDescription)"
+        ServingMeasure.describe(food.servingDescription, times: totalServings)
     }
 
     /// e.g. `"852 g total"`.
@@ -58,7 +57,7 @@ enum GroceryListBuilder {
     /// Aggregates meals into one line per distinct ingredient.
     ///
     /// Aggregation is by catalogue id, so 1 can of tuna at lunch on Monday and
-    /// 2 more on Thursday become a single "3 × 1 can" line rather than three
+    /// 2 more on Thursday become a single "3 cans" line rather than three
     /// entries the user has to add up in the aisle.
     static func lines(from meals: [MealItem]) -> [GroceryLine] {
         var servingsByFood: [String: Double] = [:]

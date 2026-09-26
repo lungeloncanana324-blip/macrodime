@@ -155,10 +155,10 @@ struct Portion: Identifiable, Hashable, Sendable {
     var cost: Double { food.costPerServing * servings }
     var grams: Double { food.servingGrams * servings }
 
-    /// e.g. `"2 × 1 can (142 g drained)"`, or just the serving text at 1×.
+    /// The serving multiplied out: `"3 large eggs"` for 1.5 servings of
+    /// `"2 large eggs"`, and the catalogue text itself at 1x.
     var quantityDescription: String {
-        let quantity = servings.formatted(.number.precision(.fractionLength(0...2)))
-        return servings == 1 ? food.servingDescription : "\(quantity) × \(food.servingDescription)"
+        ServingMeasure.describe(food.servingDescription, times: servings)
     }
 }
 

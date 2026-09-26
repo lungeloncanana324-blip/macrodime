@@ -72,14 +72,16 @@ enum DisplayFormat {
         amount.formatted(.currency(code: code))
     }
 
-    /// Whole kilocalories, e.g. `"1,842 kcal"`.
-    static func calories(_ value: Double) -> String {
-        "\(Int(value.rounded())) kcal"
+    /// Whole kilocalories, grouped for the locale, e.g. `"1,842 kcal"`. The
+    /// grouping is explicit: interpolating the Int gave `"1842 kcal"` in
+    /// Settings while SwiftUI's own `Text` printed `"1,681"` on Today.
+    static func calories(_ value: Double, locale: Locale = .current) -> String {
+        "\(Int(value.rounded()).formatted(.number.locale(locale))) kcal"
     }
 
-    /// Whole grams, e.g. `"148 g"`.
-    static func grams(_ value: Double) -> String {
-        "\(Int(value.rounded())) g"
+    /// Whole grams, grouped for the locale, e.g. `"148 g"`.
+    static func grams(_ value: Double, locale: Locale = .current) -> String {
+        "\(Int(value.rounded()).formatted(.number.locale(locale))) g"
     }
 
     /// Weight in the user's chosen system, one decimal place.

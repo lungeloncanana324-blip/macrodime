@@ -15,7 +15,7 @@ App Store Connect will accept a build at all.
 | 1 | **Apple Developer Program** | Enrolment with legal name, tax and banking details | Lungelo | $99/yr, 1 to 3 days |
 | 2 | **Privacy policy URL** | Text is written and now publishable: `docs/privacy-policy.md` renders as a page once Pages is on. Three clicks, written up in `docs/index.md` | Lungelo | 10 min |
 | 3 | **Support URL** | `docs/support.md` does the same job, including the questions a reviewer would ask and the refund route | Lungelo | done, host it |
-| 4 | **Screenshots** | Done in principle: run `36270743631` of `screenshots.yml` launched the app on all four tabs and captured them at 1320x2868 (iPhone 16 Pro Max, the 6.9 inch size). Check them against the listing copy, and fix the quantity text (gap 20) before they go to the store | Lungelo | 10 min |
+| 4 | **Screenshots** | Done in principle: run `36270743631` of `screenshots.yml` launched the app on all four tabs and captured them at 1320x2868 (iPhone 16 Pro Max, the 6.9 inch size). Check them against the listing copy, and use a run from after the quantity fix (gap 20) | Lungelo | 10 min |
 | 5 | **A TestFlight build that runs** | `codemagic.yaml` has the signed workflow ready. The app has now launched in a simulator, so this is the first run on real hardware rather than the first run at all | Lungelo and CI | half a day |
 | 6 | **App Store Connect record** | Bundle id `com.lungelo.macrodime`, name, category (Health and Fitness), age rating questionnaire | Lungelo | 45 min |
 | 7 | **Age rating** | Answer yes to medical and treatment information. That is the honest answer for an app that prescribes a calorie deficit, and it lands at 12+ | Lungelo | 5 min |
@@ -36,13 +36,13 @@ App Store Connect will accept a build at all.
 | 17 | **No accessibility audit** | Low | Labels exist on rings, meters and cards. Largest Dynamic Type, and VoiceOver on the planner, have never been checked by a human |
 | 18 | **No undo for a swap** | Low | A swap applies immediately. The engine is conservative (10% macro tolerance) but a mistake has no one-tap reversal |
 | 19 | **No way to charge for it** | Decided, not built | Decided 2026-09-20: launch free with no in-app purchases, and add one StoreKit 2 subscription in a later build. Nothing about payments can be tested until the Paid Applications Agreement is active. The whole plan, including what stays free and the sandbox test list, is in `docs/MONETISATION.md` |
-| 20 | **Quantities read like arithmetic** | Medium, visible in every screenshot | The first screenshots show `1.5 × 2 large eggs` on the plan and `1 × 1 can (142 g drained)` on the grocery list, where a person writes "3 large eggs" and "1 can". `MealItem` and `GroceryLine` multiply a serving count into a free-text serving description; fixing it properly means giving servings a structured count and unit. Smaller, same family: Settings prints `1783 kcal` where Today prints `1,681` |
+| 20 | **Quantities read like arithmetic** | Fixed 2026-09-26 | The first screenshots showed `1.5 × 2 large eggs` and `1 × 1 can (142 g drained)`. `ServingMeasure` now reads each serving into a count, unit and noun (derived from the stored text, so no schema change) and multiplies that: `3 large eggs`, `1¼ cans (178 g drained)`, `1.2 kg raw`. Every catalogue serving must parse and render back unchanged, or `ServingMeasureTests` fails. Settings' `1783 kcal` is grouped now too. Open: a grocery line can still ask for `1¼ cans`, which nobody can buy; rounding countables up in the trolley is a product decision |
 
 ## 3. What is verified, and by what
 
 | Layer | Verified how | Confidence |
 | --- | --- | --- |
-| `Domain/`, `Engine/` | `swift test` on Linux and on `macos-15`, 103 tests, figures worked by hand | High |
+| `Domain/`, `Engine/` | `swift test` on Linux and on `macos-15`, 113 tests, figures worked by hand | High |
 | `Persistence/`, `ViewModels/`, `Views/`, `App/` | `xcodebuild build` and `test` green on `macos-15` in CI (`5647a2c`), tests hosted in the app | Compiles and launches |
 | App behaviour | `screenshots.yml`: launches with demo data, stays alive on all four tabs | Launch only; nothing tapped yet |
 
