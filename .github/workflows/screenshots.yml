@@ -69,9 +69,10 @@ jobs:
           APP=$(find build/Build/Products -maxdepth 3 -name 'MacroDime.app' | head -1)
           test -n "$APP" || { echo "No .app was produced"; exit 1; }
           # CODE_SIGNING_ALLOWED=NO leaves the bundle with no signature at all
-          # (the linker signs each binary, but nothing seals the .app). The
-          # first run's launch was refused by SpringBoard with the bundle in
-          # that state. An ad-hoc signature needs no certificate or account.
+          # (the linker signs each binary, but nothing seals the .app). Sign it
+          # ad hoc, as a default Xcode simulator build would be, so the build
+          # handed to Appetize matches what its docs describe. Needs no
+          # certificate or account.
           codesign --force --deep --sign - --timestamp=none "$APP"
           codesign --verify --verbose=2 "$APP"
           xcrun simctl install "$DEVICE" "$APP"
@@ -114,23 +115,17 @@ jobs:
 
             # --stdout and --stderr put the app's own output in files. If it
             # fatalErrors, the message is here rather than in a crash report
-            # nobody reads. A refused launch (as opposed to a crash) is retried
-            # twice: a freshly installed app is sometimes turned away once.
-            launched=no
-            for attempt in 1 2 3; do
-              if xcrun simctl launch \
-                --stdout="logs/${label}.out" \
-                --stderr="logs/${label}.err" \
-                "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab" \
-                > "logs/${label}.launch"; then
-                launched=yes
-                break
-              fi
-              echo "Launch attempt $attempt on the $label screen was refused."
-              sleep 5
-            done
-            if [ "$launched" != yes ]; then
-              echo "::error::The simulator refused to launch $BUNDLE_ID three times. The app never started, so this is not a crash; the reason is in the simulator log step below."
+            # nobody reads. The paths must be absolute: the simulator's launchd
+            # opens them from its own working directory, /, so a relative
+            # "logs/x.out" meant creating /logs on the read-only system volume.
+            # That failed the spawn (EROFS), and simctl reported only "denied
+            # by service delegate". The first two runs never started the app.
+            if ! xcrun simctl launch \
+              --stdout="$PWD/logs/${label}.out" \
+              --stderr="$PWD/logs/${label}.err" \
+              "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab" \
+              > "logs/${label}.launch"; then
+              echo "::error::The simulator refused to launch $BUNDLE_ID on the $label screen. The app never started, so this is not a crash; the reason is in the simulator log step below."
               exit 1
             fi
 
