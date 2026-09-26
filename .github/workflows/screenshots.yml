@@ -68,11 +68,17 @@ jobs:
         run: |
           APP=$(find build/Build/Products -maxdepth 3 -name 'MacroDime.app' | head -1)
           test -n "$APP" || { echo "No .app was produced"; exit 1; }
+          # CODE_SIGNING_ALLOWED=NO leaves the bundle with no signature at all
+          # (the linker signs each binary, but nothing seals the .app). The
+          # first run's launch was refused by SpringBoard with the bundle in
+          # that state. An ad-hoc signature needs no certificate or account.
+          codesign --force --deep --sign - --timestamp=none "$APP"
+          codesign --verify --verbose=2 "$APP"
           xcrun simctl install "$DEVICE" "$APP"
           # Dark appearance: the palette was designed against it.
           xcrun simctl ui "$DEVICE" appearance dark
 
-      # The same unsigned simulator build, packaged for Appetize, which runs it
+      # The same ad-hoc signed simulator build, packaged for Appetize, which runs it
       # in a browser so the app can be tapped through without a Mac. Zipped
       # with ditto here, not left to upload-artifact: the artifact zip drops
       # the executable bit, and an .app without it will not launch. Packaged
@@ -108,12 +114,25 @@ jobs:
 
             # --stdout and --stderr put the app's own output in files. If it
             # fatalErrors, the message is here rather than in a crash report
-            # nobody reads.
-            xcrun simctl launch \
-              --stdout="logs/${label}.out" \
-              --stderr="logs/${label}.err" \
-              "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab" \
-              > "logs/${label}.launch"
+            # nobody reads. A refused launch (as opposed to a crash) is retried
+            # twice: a freshly installed app is sometimes turned away once.
+            launched=no
+            for attempt in 1 2 3; do
+              if xcrun simctl launch \
+                --stdout="logs/${label}.out" \
+                --stderr="logs/${label}.err" \
+                "$DEVICE" "$BUNDLE_ID" -MacroDimeScreenshots -MacroDimeTab "$tab" \
+                > "logs/${label}.launch"; then
+                launched=yes
+                break
+              fi
+              echo "Launch attempt $attempt on the $label screen was refused."
+              sleep 5
+            done
+            if [ "$launched" != yes ]; then
+              echo "::error::The simulator refused to launch $BUNDLE_ID three times. The app never started, so this is not a crash; the reason is in the simulator log step below."
+              exit 1
+            fi
 
             sleep 8
 
@@ -149,6 +168,14 @@ jobs:
             done
           fi
 
+      # simctl reports a refused launch only as "denied by service delegate".
+      # The reason (signature, missing executable, policy) goes to the
+      # simulator's own log, which nobody sees unless it is printed here.
+      - name: Print the simulator's log for the app
+        if: failure()
+        run: |
+          xcrun simctl spawn "$DEVICE" log show --style compact --last 15m \
+            --predicate 'eventMessage CONTAINS[c] "macrodime"' 2>&1 | tail -120 || true
 
       - name: Note the pixel sizes
         run: |
