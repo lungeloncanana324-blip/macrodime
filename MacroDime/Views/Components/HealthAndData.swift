@@ -42,9 +42,10 @@ enum HealthDisclaimer {
         MacroDime is for adults. It is not a medical device, and it does not \
         diagnose, treat, or prevent any condition.
 
-        Ingredient prices are approximate supermarket averages used to compare \
-        ingredients against one another. They are not a quote, and they are not \
-        converted to your local currency.
+        Ingredient prices are US averages: official government figures where \
+        they exist, estimates for the rest. They are not a quote from any store. \
+        If you set your own currency in Settings, amounts are converted at the \
+        rate you enter.
         """
 
     /// Shown beside the BMI figure, since BMI is the number most often misread.
@@ -57,10 +58,10 @@ enum HealthDisclaimer {
 
 // MARK: - Onboarding acknowledgement
 
-/// The disclaimer card on the final onboarding step, with the toggle that gates
-/// the finish button.
+/// The disclaimer card on the final onboarding step. The toggle that gates the
+/// finish button lives in the onboarding footer, next to that button, so it
+/// cannot scroll out of sight.
 struct HealthDisclaimerCard: View {
-    @Binding var isAcknowledged: Bool
     @State private var isExpanded = false
 
     var body: some View {
@@ -79,14 +80,6 @@ struct HealthDisclaimerCard: View {
                     withAnimation { isExpanded.toggle() }
                 }
                 .font(.caption.weight(.medium))
-
-                Divider()
-
-                Toggle(isOn: $isAcknowledged) {
-                    Text("I understand these are estimates, not medical advice.")
-                        .font(.subheadline)
-                }
-                .tint(Brand.gold)
             }
         }
     }

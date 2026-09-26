@@ -119,17 +119,20 @@ struct OnboardingView: View {
 
     private var footer: some View {
         VStack(spacing: 12) {
-            if model.step == .summary, !model.hasAcknowledgedDisclaimer {
-                Label(
-                    "Please confirm you understand the health note above.",
-                    systemImage: "info.circle.fill"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // The acknowledgement sits beside the button it unlocks. It used to
+            // be a toggle at the foot of the summary, below four cards, with a
+            // caption here pointing "above": the first person to run the app
+            // found a disabled button and no visible reason for it.
+            if model.step == .summary {
+                Toggle(isOn: $model.hasAcknowledgedDisclaimer) {
+                    Text("I understand these are estimates, not medical advice.")
+                        .font(.subheadline)
+                }
+                .tint(Brand.gold)
             }
 
-            if let error = model.validationError, model.step == .bodyMetrics {
+            // Also shown on the summary, which is the other step it disables.
+            if let error = model.validationError, model.step == .bodyMetrics || model.step == .summary {
                 Label(error.message, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
@@ -656,7 +659,7 @@ struct OnboardingView: View {
             PlanGapsCard(report: model.feasibility, title: "Before you commit")
 
 
-            HealthDisclaimerCard(isAcknowledged: $model.hasAcknowledgedDisclaimer)
+            HealthDisclaimerCard()
 
             Text(HealthDisclaimer.bmiCaveat)
                 .font(.caption)
