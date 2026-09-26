@@ -33,6 +33,7 @@ App Store Connect will accept a build at all.
 | 14 | **No data export** | Medium | Delete-all exists; export does not. Apple does not require it, but it is the honest counterpart, and it is the first thing a user asks for when changing phones |
 | 15 | **iPhone only** | Low | `TARGETED_DEVICE_FAMILY: "1"`. iPad support means layout work that cannot be judged without a device |
 | 16 | **English only, US-centric food** | Low | 57 US supermarket items. A South African launch needs local staples and prices: a content project, not a code change |
+| 21 | **30 of 57 prices are still estimates** | Low, improved 2026-09-26 | 27 foods now carry official averages: 11 from BLS monthly data, 16 from USDA ERS fruit and vegetable prices carried forward with the CPI. `scripts/update_prices.py` writes them into `SourcedPrices.swift` at build time and `prices.yml` refreshes them on the 20th of each month, so the app still never goes online. The rest (fish, oils, nuts, most dairy, specialty breads) have no public average; a store API such as Kroger's would cover them, but only through a server, and it would change the App Privacy answers. A free `BLS_API_KEY` secret makes the monthly job independent of the shared no-key quota |
 | 17 | **No accessibility audit** | Low | Labels exist on rings, meters and cards. Largest Dynamic Type, and VoiceOver on the planner, have never been checked by a human |
 | 18 | **No undo for a swap** | Low | A swap applies immediately. The engine is conservative (10% macro tolerance) but a mistake has no one-tap reversal |
 | 19 | **No way to charge for it** | Decided, not built | Decided 2026-09-20: launch free with no in-app purchases, and add one StoreKit 2 subscription in a later build. Nothing about payments can be tested until the Paid Applications Agreement is active. The whole plan, including what stays free and the sandbox test list, is in `docs/MONETISATION.md` |
@@ -42,7 +43,7 @@ App Store Connect will accept a build at all.
 
 | Layer | Verified how | Confidence |
 | --- | --- | --- |
-| `Domain/`, `Engine/` | `swift test` on Linux and on `macos-15`, 113 tests, figures worked by hand | High |
+| `Domain/`, `Engine/` | `swift test` on Linux and on `macos-15`, 124 tests, figures worked by hand against the frozen `FoodCatalog.reference` prices | High |
 | `Persistence/`, `ViewModels/`, `Views/`, `App/` | `xcodebuild build` and `test` green on `macos-15` in CI (`5647a2c`), tests hosted in the app | Compiles and launches |
 | App behaviour | `screenshots.yml`: launches with demo data, stays alive on all four tabs | Launch only; nothing tapped yet |
 

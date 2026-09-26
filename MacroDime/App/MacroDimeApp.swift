@@ -227,6 +227,23 @@ struct SettingsView: View {
         )
     }
 
+    // MARK: Prices
+
+    /// Where the prices come from. They are compiled into the app, so saying so
+    /// is also the privacy statement: showing a price never goes online.
+    private var pricesSection: some View {
+        let summary = PriceTable.summary
+        return Section {
+            LabeledContent("Official averages", value: "\(summary.sourcedCount) of \(summary.totalCount) foods")
+            LabeledContent("Estimates", value: "\(summary.estimatedCount) foods")
+            LabeledContent("Latest data", value: summary.period)
+        } header: {
+            Text("Prices")
+        } footer: {
+            Text(summary.explanation)
+        }
+    }
+
     /// Typed by the user, never fetched. There is no exchange-rate feed in this
     /// app, and inventing one would put a number on screen that nobody could
     /// check.
@@ -265,6 +282,7 @@ struct SettingsView: View {
 
                 foodRulesSection
                 currencySection
+                pricesSection
 
                 Section {
                     Button("Edit profile", systemImage: "pencil") { isEditingProfile = true }

@@ -14,10 +14,10 @@ import XCTest
 
 final class PlanAuditTests: XCTestCase {
 
-    private let catalog = FoodCatalog.all
+    private let catalog = FoodCatalog.reference
 
     private func food(_ id: String) throws -> FoodSnapshot {
-        try XCTUnwrap(FoodCatalog.food(id: id), "Missing catalogue item: \(id)")
+        try XCTUnwrap(FoodCatalog.referenceFood(id: id), "Missing catalogue item: \(id)")
     }
 
     private func meal(
@@ -52,7 +52,8 @@ final class PlanAuditTests: XCTestCase {
             meals: [],
             targets: NutritionFacts(calories: 2200, protein: 150, carbs: 240, fat: 60),
             dailyBudgetUSD: 12,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
 
         XCTAssertTrue(report.contains(.emptyPlan))
@@ -73,7 +74,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: NutritionFacts(calories: 2200, protein: 150, carbs: 240, fat: 60),
             dailyBudgetUSD: 20,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
 
         let gap = try XCTUnwrap(report.first(.proteinShortfall))
@@ -89,7 +91,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: day.totalCost,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
 
         XCTAssertFalse(report.contains(.proteinShortfall))
@@ -110,7 +113,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: 5,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
 
         let gap = try XCTUnwrap(report.first(.budgetOverrun))
@@ -129,7 +133,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: day.totalCost,
-            dietary: DietaryProfile(pattern: .vegetarian)
+            dietary: DietaryProfile(pattern: .vegetarian),
+            catalog: catalog
         )
 
         let gap = try XCTUnwrap(report.first(.restrictionConflict))
@@ -145,7 +150,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: day.totalCost,
-            dietary: DietaryProfile(prepEffort: .quick)
+            dietary: DietaryProfile(prepEffort: .quick),
+            catalog: catalog
         )
 
         let gap = try XCTUnwrap(report.first(.cookingEffort))
@@ -163,7 +169,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: day.totalCost,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
         XCTAssertEqual(report.first(.noVegetable)?.severity, .info)
 
@@ -172,7 +179,8 @@ final class PlanAuditTests: XCTestCase {
             meals: withVegetables,
             targets: withVegetables.totalNutrition,
             dailyBudgetUSD: withVegetables.totalCost,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
         XCTAssertFalse(vegetableReport.contains(.noVegetable))
     }
@@ -186,7 +194,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: day.totalCost,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
         XCTAssertEqual(report.first(.lowVariety)?.severity, .info)
 
@@ -195,7 +204,8 @@ final class PlanAuditTests: XCTestCase {
             meals: varied,
             targets: varied.totalNutrition,
             dailyBudgetUSD: varied.totalCost,
-            dietary: .unrestricted
+            dietary: .unrestricted,
+            catalog: catalog
         )
         XCTAssertFalse(variedReport.contains(.lowVariety))
     }
@@ -206,7 +216,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: day.totalNutrition,
             dailyBudgetUSD: day.totalCost,
-            dietary: DietaryProfile(schedule: .threeMealsAndSnacks)
+            dietary: DietaryProfile(schedule: .threeMealsAndSnacks),
+            catalog: catalog
         )
         let gap = try XCTUnwrap(report.first(.unfilledSlot))
         XCTAssertEqual(gap.severity, .info)
@@ -322,7 +333,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: NutritionFacts(calories: 2200, protein: 150, carbs: 240, fat: 60),
             dailyBudgetUSD: 1,
-            dietary: DietaryProfile(prepEffort: .noCook)
+            dietary: DietaryProfile(prepEffort: .noCook),
+            catalog: catalog
         )
 
         XCTAssertFalse(report.gaps.isEmpty)
@@ -339,7 +351,8 @@ final class PlanAuditTests: XCTestCase {
             meals: day,
             targets: NutritionFacts(calories: 2200, protein: 150, carbs: 240, fat: 60),
             dailyBudgetUSD: 1,
-            dietary: DietaryProfile(prepEffort: .standard)
+            dietary: DietaryProfile(prepEffort: .standard),
+            catalog: catalog
         )
 
         let severities = report.gaps.map(\.severity.rawValue)

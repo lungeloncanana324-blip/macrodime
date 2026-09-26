@@ -37,9 +37,16 @@ Because it does not. The app checks calories, protein, carbohydrate, fat and
 cost, and it says so on the plan screen rather than implying otherwise.
 
 **Why is my plan missing foods I eat?**
-The ingredient catalogue is 57 items priced at US supermarket averages. If you
-set a dietary restriction, those foods are removed before any suggestion is
-made.
+The ingredient catalogue is 57 items. If you set a dietary restriction, those
+foods are removed before any suggestion is made.
+
+**Where do the prices come from?**
+Where the US government publishes an average retail price, MacroDime uses it:
+the Bureau of Labor Statistics monthly averages, and USDA fruit and vegetable
+prices adjusted to the same month. The rest are estimates, and Settings, under
+Prices, says how many of each there are and how recent the data is. Prices are
+US averages, so your own store will differ. They are built into the app and
+refreshed with app updates; MacroDime never goes online to look up a price.
 
 **Can I get a refund?**
 Purchases through the App Store are handled by Apple: https://reportaproblem.apple.com

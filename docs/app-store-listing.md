@@ -35,8 +35,12 @@ for lean gaining, protein held at 2.0 g per kg while cutting, and fat no lower
 than 20% of calories. Every override the engine makes to protect those rules is
 reported rather than hidden.
 
-Your plan is built from a curated catalogue of 57 ingredients priced at US
-supermarket averages, and every meal shows its cost next to its macros.
+Your plan is built from a curated catalogue of 57 ingredients, and every meal
+shows its cost next to its macros. Where the US government publishes an
+average retail price (the Bureau of Labor Statistics, and USDA fruit and
+vegetable prices), that is the price you see. The rest are estimates, and
+Settings says how many of each there are. Prices are built into the app, so
+checking one never sends anything anywhere.
 
 THE LOW-COST SWAP
 

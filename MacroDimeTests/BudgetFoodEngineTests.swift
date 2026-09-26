@@ -12,12 +12,12 @@ import XCTest
 
 final class BudgetFoodEngineTests: XCTestCase {
 
-    private let engine = BudgetFoodEngine()
+    private let engine = BudgetFoodEngine(catalog: FoodCatalog.reference)
 
     // MARK: Fixtures
 
     private func food(_ id: String) throws -> FoodSnapshot {
-        try XCTUnwrap(FoodCatalog.food(id: id), "Missing catalogue item: \(id)")
+        try XCTUnwrap(FoodCatalog.referenceFood(id: id), "Missing catalogue item: \(id)")
     }
 
     /// The canonical expensive meal: salmon, rice, fresh broccoli, olive oil.
@@ -47,14 +47,14 @@ final class BudgetFoodEngineTests: XCTestCase {
     }
 
     func testCatalogueIDsAreUnique() {
-        let ids = FoodCatalog.all.map(\.id)
+        let ids = FoodCatalog.reference.map(\.id)
         XCTAssertEqual(Set(ids).count, ids.count, "Duplicate catalogue id")
     }
 
     /// Label calories and Atwater calories should agree within the rounding
     /// slack real label data carries. A wild mismatch means a typo in the table.
     func testCatalogueMacrosAreInternallyConsistent() {
-        for item in FoodCatalog.all {
+        for item in FoodCatalog.reference {
             let implied = item.nutrition.caloriesFromMacros
             let stated = item.nutrition.calories
             guard stated > 30 else { continue }   // trace items: noise dominates
@@ -128,7 +128,7 @@ final class BudgetFoodEngineTests: XCTestCase {
     func testSubstitutionWithoutRebalancingFailsTheFatGate() throws {
         var policy = SwapPolicy.default
         policy.allowsRebalancing = false
-        let plainEngine = BudgetFoodEngine(policy: policy)
+        let plainEngine = BudgetFoodEngine(catalog: FoodCatalog.reference, policy: policy)
 
         let meal = try salmonDinner()
         let salmonPortion = try XCTUnwrap(meal.portions.first)
@@ -250,8 +250,8 @@ final class BudgetFoodEngineTests: XCTestCase {
     /// Fuzz across the catalogue: any two-ingredient meal that yields a swap
     /// must obey both gates. Catches accidental tolerance leaks.
     func testEveryGeneratedSwapObeysBothGates() throws {
-        let proteins = FoodCatalog.all.filter { $0.category == .proteinAnchor }
-        let carbs = FoodCatalog.all.filter { $0.category == .carbBase }
+        let proteins = FoodCatalog.reference.filter { $0.category == .proteinAnchor }
+        let carbs = FoodCatalog.reference.filter { $0.category == .carbBase }
 
         for protein in proteins {
             for carb in carbs {

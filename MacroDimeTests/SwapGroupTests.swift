@@ -20,10 +20,10 @@ import XCTest
 
 final class SwapGroupTests: XCTestCase {
 
-    private let engine = BudgetFoodEngine()
+    private let engine = BudgetFoodEngine(catalog: FoodCatalog.reference)
 
     private func food(_ id: String) throws -> FoodSnapshot {
-        try XCTUnwrap(FoodCatalog.food(id: id), "Missing catalogue item: \(id)")
+        try XCTUnwrap(FoodCatalog.referenceFood(id: id), "Missing catalogue item: \(id)")
     }
 
     /// Fresh broccoli, white rice, olive oil and salmon: the canonical expensive
@@ -52,7 +52,7 @@ final class SwapGroupTests: XCTestCase {
     /// is `.unclassified`, which substitutes with nothing, so an unclassified
     /// vegetable is not dangerous, only useless. This test stops it shipping.
     func testEveryVegetableHasACulinaryFamily() {
-        let vegetables = FoodCatalog.all.filter { $0.category == .vegetable }
+        let vegetables = FoodCatalog.reference.filter { $0.category == .vegetable }
         XCTAssertFalse(vegetables.isEmpty)
         for vegetable in vegetables {
             XCTAssertNotEqual(
@@ -65,7 +65,7 @@ final class SwapGroupTests: XCTestCase {
     /// A group must never claim a category other than the food's own, or the
     /// ingredient picker and the meal breakdown would classify it twice.
     func testEverySwapGroupMapsBackToItsOwnCategory() {
-        for item in FoodCatalog.all {
+        for item in FoodCatalog.reference {
             XCTAssertEqual(
                 item.swapGroup.category, item.category,
                 "\(item.name): group \(item.swapGroup.rawValue) belongs to \(item.swapGroup.category.rawValue), not \(item.category.rawValue)"
@@ -76,7 +76,7 @@ final class SwapGroupTests: XCTestCase {
     /// Outside vegetables the group is a mirror of the category, so no existing
     /// swap behaviour (salmon to tuna, chicken breast to chicken thighs) changes.
     func testNonVegetableGroupsMirrorTheirCategory() {
-        for item in FoodCatalog.all where item.category != .vegetable {
+        for item in FoodCatalog.reference where item.category != .vegetable {
             XCTAssertEqual(
                 item.swapGroup, SwapGroup.default(for: item.category),
                 "\(item.name) should be grouped by its category"
@@ -101,7 +101,7 @@ final class SwapGroupTests: XCTestCase {
     /// No vegetable is ever offered as a replacement for a vegetable from a
     /// different family, across the whole catalogue rather than one fixture.
     func testVegetableSwapsStayInsideTheFamily() throws {
-        for vegetable in FoodCatalog.all where vegetable.category == .vegetable {
+        for vegetable in FoodCatalog.reference where vegetable.category == .vegetable {
             let meal = MealItem(
                 name: "Side",
                 slot: .dinner,
@@ -142,7 +142,7 @@ final class SwapGroupTests: XCTestCase {
     func testCarrotsAreOfferedOnlyWhenTheFamilyGateIsLifted() throws {
         var policy = SwapPolicy.default
         policy.restrictToSameSwapGroup = false
-        let ungated = BudgetFoodEngine(policy: policy)
+        let ungated = BudgetFoodEngine(catalog: FoodCatalog.reference, policy: policy)
 
         let meal = try salmonDinner()
         let portion = try broccoliPortion(in: meal)
@@ -222,7 +222,7 @@ final class SwapGroupTests: XCTestCase {
         )
         XCTAssertEqual(mystery.swapGroup, .unclassified)
 
-        let engine = BudgetFoodEngine(catalog: FoodCatalog.all + [mystery])
+        let engine = BudgetFoodEngine(catalog: FoodCatalog.reference + [mystery])
         let broccoli = try food("fresh-broccoli")
         let meal = MealItem(name: "Side", slot: .dinner, portions: [Portion(food: broccoli)])
 

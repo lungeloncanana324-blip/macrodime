@@ -114,6 +114,27 @@ struct FoodSnapshot: Identifiable, Hashable, Sendable {
         )
     }
 
+    /// A copy at a different price per serving. `PriceTable` uses it to put a
+    /// published average in place of the catalogue's hand-set figure.
+    func withCost(_ costPerServing: Double) -> FoodSnapshot {
+        FoodSnapshot(
+            id: id,
+            name: name,
+            section: section,
+            category: category,
+            swapGroup: swapGroup,
+            costTier: costTier,
+            costPerServing: costPerServing,
+            servingDescription: servingDescription,
+            servingGrams: servingGrams,
+            nutrition: nutrition,
+            satietyIndex: satietyIndex,
+            isSwapCandidate: isSwapCandidate,
+            traits: traits,
+            prepMinutes: prepMinutes
+        )
+    }
+
     /// Protein grams bought per currency unit, the headline "budget powerhouse"
     /// number, and the metric the swap engine is ultimately optimising.
     ///

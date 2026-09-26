@@ -8,11 +8,13 @@
 //
 //  Macro values are per the stated serving and are drawn from standard
 //  reference data (USDA FoodData Central for whole foods, typical label values
-//  for packaged goods). Prices are US national-average supermarket prices and
-//  are deliberately approximate: they exist to *rank* ingredients against each
-//  other, which is all the swap engine needs. They are denominated in USD and
-//  are never relabelled into another currency; see `Money` for how a user's own
-//  currency is handled.
+//  for packaged goods). The prices written below are hand-set US estimates,
+//  kept frozen as `reference` because the engine tests are worked against
+//  them. The app uses `all`, which replaces each one with a published average
+//  wherever `PriceTable` has one (BLS and USDA ERS data, compiled in by
+//  `scripts/update_prices.py`, never fetched at runtime). Prices are USD and
+//  are never relabelled into another currency; see `Money` for how a user's
+//  own currency is handled.
 //
 //  Dietary traits and preparation times are held in lookup tables at the end of
 //  the file rather than in each declaration, and applied by `annotated(_:)`.
@@ -22,21 +24,34 @@ import Foundation
 
 enum FoodCatalog {
 
-    /// Every curated ingredient, in no particular order. `all` is computed once
-    /// and cached by the `static let`, so repeated engine calls do not rebuild it.
+    /// Every curated ingredient at the hand-set prices written below, in no
+    /// particular order. Frozen on purpose: the engine tests are worked by hand
+    /// against these figures, and a monthly price refresh must not move them.
     ///
     /// Each declaration is passed through `annotated(_:)`, which fills in the
     /// dietary traits and preparation time from the tables at the foot of this
     /// file. Declarations therefore stay about food and macros.
-    static let all: [FoodSnapshot] = (proteins + carbohydrates + fats + vegetables + fruits + dairy + condiments)
+    static let reference: [FoodSnapshot] = (proteins + carbohydrates + fats + vegetables + fruits + dairy + condiments)
         .map(annotated)
 
-    /// Fast lookup by stable catalogue id.
+    /// What the app uses: `reference`, with each price replaced by a published
+    /// average wherever `PriceTable` has one. Computed once and cached by the
+    /// `static let`, so repeated engine calls do not rebuild it.
+    static let all: [FoodSnapshot] = reference.map(PriceTable.priced)
+
+    /// Fast lookup by stable catalogue id, at the prices the app uses.
     static let byID: [String: FoodSnapshot] = Dictionary(
         uniqueKeysWithValues: all.map { ($0.id, $0) }
     )
 
     static func food(id: String) -> FoodSnapshot? { byID[id] }
+
+    private static let referenceByID: [String: FoodSnapshot] = Dictionary(
+        uniqueKeysWithValues: reference.map { ($0.id, $0) }
+    )
+
+    /// A food at its hand-set reference price. For tests.
+    static func referenceFood(id: String) -> FoodSnapshot? { referenceByID[id] }
 
     // MARK: - Protein anchors
 
