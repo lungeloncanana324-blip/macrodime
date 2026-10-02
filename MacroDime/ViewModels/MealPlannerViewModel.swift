@@ -113,9 +113,6 @@ final class MealPlannerViewModel {
         return targets - consumed
     }
 
-    var budgetRemaining: Double { dailyBudget - spend }
-    var isOverBudget: Bool { spend > dailyBudget && dailyBudget > 0 }
-
     /// 0-1+ progress against each target. Values above 1 mean over target, and
     /// the rings are expected to render that state rather than clamp silently.
     func progress(for axis: MacroAxis) -> Double {
@@ -123,11 +120,6 @@ final class MealPlannerViewModel {
         let target = axis.value(in: targets)
         guard target > 0 else { return 0 }
         return axis.value(in: consumed) / target
-    }
-
-    var budgetProgress: Double {
-        guard dailyBudget > 0 else { return 0 }
-        return spend / dailyBudget
     }
 
     func meal(for slot: MealSlot) -> MealItem? {
