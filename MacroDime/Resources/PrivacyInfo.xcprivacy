@@ -13,9 +13,12 @@
     app's own SwiftData store. The photo library is read only when the user
     picks a progress photo, and the image is copied into that store.
 
-    APIs: UserDefaults, which the catalogue seeder uses to remember which
-    catalogue version it has written. Reason CA92.1 covers exactly that use:
-    reading and writing information accessible only to the app itself.
+    APIs: none. The catalogue seeder used UserDefaults to remember a version
+    number; it now compares the stored catalogue by value, and no other code
+    touches UserDefaults, file timestamps, disk space or boot time. If any
+    code starts to use UserDefaults or @AppStorage, declare
+    NSPrivacyAccessedAPICategoryUserDefaults with reason CA92.1 (information
+    accessible only to the app itself). ios.yml fails the build until it is.
 -->
 <plist version="1.0">
 <dict>
@@ -29,15 +32,6 @@
     <array/>
 
     <key>NSPrivacyAccessedAPITypes</key>
-    <array>
-        <dict>
-            <key>NSPrivacyAccessedAPIType</key>
-            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
-            <key>NSPrivacyAccessedAPITypeReasons</key>
-            <array>
-                <string>CA92.1</string>
-            </array>
-        </dict>
-    </array>
+    <array/>
 </dict>
 </plist>

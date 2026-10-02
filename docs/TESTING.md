@@ -12,7 +12,56 @@ this laptop, and the columns say plainly what each one does and does not prove.
 | 5 | Real device | TestFlight, needs the $99 membership | It works on hardware, with a real store on disk | Nothing important |
 | 6 | Click around by hand | A rented remote Mac, optional and paid | Layout, previews, view hierarchy debugging | Your problem if you skip it |
 
-Layer 4 is the answer to "where can I test the app today".
+Layer 4 is the answer to "where can I test the app today" on iOS. For Android,
+the answer is your own phone, below.
+
+## Android: on your phone, today
+
+Android needs no store account to test. The test build is a release build
+(shrunk by R8, so it runs at the speed users will get) signed with this
+machine's debug key so a phone will install it. Play App Signing re-signs the
+real one; this build is for testing only.
+
+Build it from `android/` (Git Bash, JDK 21 on `JAVA_HOME`):
+
+```
+./gradlew :app:assembleRelease
+"$ANDROID_HOME/build-tools/36.0.0/apksigner.bat" sign \
+  --ks ~/.android/debug.keystore --ks-pass pass:android \
+  --ks-key-alias androiddebugkey --key-pass pass:android \
+  --out build/MacroDime-test.apk app/build/outputs/apk/release/app-release-unsigned.apk
+```
+
+Get it onto the phone, any of three ways:
+
+1. **WhatsApp or email it to yourself** and tap the attachment on the phone.
+2. **Google Drive:** upload `MacroDime-test.apk` from the PC's browser, open it
+   in the Drive app.
+3. **USB:** copy it into the phone's `Download` folder, open it in Files. Or,
+   with USB debugging on, `adb install -r build/MacroDime-test.apk`.
+
+Android then asks to allow installs from that app (Settings opens; switch
+"Allow from this source" on and go back). Play Protect may warn that it does
+not recognise the developer, because the app is not from Play: choose
+**More details, Install anyway**. To update, install the new APK over the old
+one; your data stays.
+
+No Android phone? Upload the same APK at appetize.io and pick Android.
+
+### What to tap, and what each step proves
+
+| # | Do this | Expect |
+| --- | --- | --- |
+| 1 | Finish onboarding, ticking the health acknowledgement | Start Planning unlocks only after the tick; targets and budget match what you entered |
+| 2 | Plan tab: add a food, then change its servings | Totals, rings and the day's cost move together |
+| 3 | Open a meal's swaps, apply one | The saving shown on the card is the saving applied; macros stay within the stated tolerance |
+| 4 | Groceries tab, straight after step 2 | The food you added is already on the list, without tapping anything |
+| 5 | Settings: currency ZAR, rate 18.5 | Every amount shows in rand, about 18.5 times the dollar figure |
+| 6 | Switch the currency back to USD | Every amount returns to the original dollar figure (this was a real bug: $9.00 used to read $166.50) |
+| 7 | Settings: Delete All My Data | The app returns to onboarding with nothing left |
+| 8 | Turn on dark mode and the largest font size, revisit each tab | Nothing clipped, overlapping or unreadable |
+
+Report anything that looks wrong with a screenshot and the step number.
 
 ## 1. The engines, on this machine
 

@@ -108,26 +108,41 @@ struct CurrencySettings: Hashable, Sendable {
         displayCode != PriceBook.currencyCode && unitsPerUSD != 1
     }
 
-    /// A catalogue amount (USD) in the display currency.
-    func convert(_ usd: Double) -> Double { usd * unitsPerUSD }
+    /// The currency amounts are actually shown in: the chosen code only once a
+    /// real rate makes it a conversion, and until then honest USD.
+    ///
+    /// Applying the code and the rate independently was a bug, found by the
+    /// Android port. Choosing ZAR before typing a rate labelled every dollar
+    /// amount as rand, and switching back to USD after typing 18.5 multiplied
+    /// every dollar price by 18.5 under a dollar sign ($9.00 read $166.50).
+    var shownCode: String {
+        isConverting ? displayCode : PriceBook.currencyCode
+    }
 
-    /// A number the user typed in the display currency, expressed in USD for
+    /// The factor actually applied: the user's rate while converting, else 1.
+    private var appliedRate: Double {
+        isConverting ? unitsPerUSD : 1
+    }
+
+    /// A catalogue amount (USD) in the shown currency.
+    func convert(_ usd: Double) -> Double { usd * appliedRate }
+
+    /// A number the user typed in the shown currency, expressed in USD for
     /// storage. The inverse of `convert(_:)`.
     func toStorage(_ displayAmount: Double) -> Double {
-        guard unitsPerUSD > 0 else { return displayAmount }
-        return displayAmount / unitsPerUSD
+        displayAmount / appliedRate
     }
 
     /// Formats a USD amount, converting first when the user has opted in.
     /// This is the only path a catalogue price should take to the screen.
     func format(_ usd: Double) -> String {
-        DisplayFormat.currency(convert(usd), code: displayCode)
+        DisplayFormat.currency(convert(usd), code: shownCode)
     }
 
     /// Formats an already-converted amount, for values that were derived in
     /// display units (a difference between two converted amounts, say).
     func formatDisplayAmount(_ amount: Double) -> String {
-        DisplayFormat.currency(amount, code: displayCode)
+        DisplayFormat.currency(amount, code: shownCode)
     }
 
     /// The currency chosen from the device locale, offered as a starting point

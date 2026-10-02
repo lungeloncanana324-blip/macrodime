@@ -66,8 +66,9 @@ targets:
           this device and are never uploaded.
 
         # PrivacyInfo.xcprivacy is picked up from MacroDime/Resources by the
-        # `sources` entry above. It declares no data collection and the one
-        # required-reason API the app uses (UserDefaults, reason CA92.1).
+        # `sources` entry above. It declares no data collection and no
+        # required-reason APIs (the seeder no longer uses UserDefaults; ios.yml
+        # fails the build if any code starts to without declaring CA92.1).
         # App Store Connect refuses builds without it.
 
   MacroDimeTests:

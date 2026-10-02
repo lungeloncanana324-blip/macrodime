@@ -228,10 +228,13 @@ final class UserProfileViewModel {
         PlanAudit.minimumDailyCostUSD(targets: prescription.targets, dietary: dietaryProfile)?.cost ?? 0
     }
 
+    /// Quoted in the draft's own currency. It used to be the one figure on the
+    /// screen formatted in USD whatever the setting, so a profile edited in rand
+    /// showed a dollar warning beside rand meters.
     var budgetWarning: String? {
         let minimum = minimumViableDailyCost()
         guard minimum > 0, dailyFoodBudget < minimum else { return nil }
-        return "Hitting \(DisplayFormat.grams(prescription.targets.protein)) of protein a day costs around \(DisplayFormat.currency(minimum)) even on the cheapest foods you allow. Consider raising your allowance."
+        return "Hitting \(DisplayFormat.grams(prescription.targets.protein)) of protein a day costs around \(currency.format(minimum)) even on the cheapest foods you allow. Consider raising your allowance."
     }
 
     // MARK: Navigation

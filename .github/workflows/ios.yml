@@ -92,6 +92,14 @@ jobs:
           plutil -p "$MANIFEST"
           # No collected data and no tracking: the app has no networking code,
           # and this is what App Privacy answers must match.
+          # Required-reason APIs: none are declared because none are used.
+          # UserDefaults (and @AppStorage, which wraps it) needs reason CA92.1
+          # the moment any app code touches it; catch that here rather than
+          # as an upload rejection.
+          if grep -rqE 'UserDefaults|@AppStorage' --include='*.swift' MacroDime; then
+            grep -q 'CA92.1' "$MANIFEST" \
+              || { echo "error: app code uses UserDefaults; declare NSPrivacyAccessedAPICategoryUserDefaults with reason CA92.1"; exit 1; }
+          fi
           plutil -p "$MANIFEST" | grep -q '"NSPrivacyTracking" => 0' \
             || { echo "error: NSPrivacyTracking must be false"; exit 1; }
 

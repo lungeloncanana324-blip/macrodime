@@ -71,6 +71,26 @@ final class MoneyTests: XCTestCase {
         XCTAssertTrue(CurrencySettings(displayCode: "ZAR", unitsPerUSD: 18.5).isConverting)
     }
 
+    /// A rate left over from an earlier choice must not multiply dollar prices
+    /// under a dollar sign: choose ZAR, type 18.5, switch back to USD, and
+    /// $9.00 read as $166.50. Found by the Android port.
+    func testALeftoverRateIsNotAppliedToDollars() {
+        let leftover = CurrencySettings(displayCode: "USD", unitsPerUSD: 18.5)
+        XCTAssertEqual(leftover.convert(10), 10)
+        XCTAssertEqual(leftover.format(9), CurrencySettings.usd.format(9))
+        XCTAssertEqual(leftover.toStorage(10), 10, "a typed dollar budget must be stored as typed")
+    }
+
+    /// Choosing a currency before typing its rate must not put that currency's
+    /// code on a dollar amount, which is the original bug in a new place.
+    func testACurrencyWithNoRateYetStillShowsDollars() {
+        let unrated = CurrencySettings(displayCode: "ZAR", unitsPerUSD: 1)
+        XCTAssertEqual(unrated.shownCode, "USD")
+        XCTAssertEqual(unrated.format(9), CurrencySettings.usd.format(9))
+        XCTAssertEqual(unrated.formatDisplayAmount(9), CurrencySettings.usd.format(9))
+        XCTAssertEqual(CurrencySettings(displayCode: "ZAR", unitsPerUSD: 18.5).shownCode, "ZAR")
+    }
+
     // MARK: Refusing bad rates
 
     /// A garbage rate produces garbage output silently, so it is refused rather

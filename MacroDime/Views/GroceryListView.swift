@@ -67,15 +67,17 @@ struct GroceryListView: View {
                     ContentUnavailableView {
                         Label("No list yet", systemImage: "cart")
                     } description: {
-                        Text("Plan some meals for this week, then generate your list.")
-                    } actions: {
-                        Button("Generate list", action: regenerate)
-                            .buttonStyle(.borderedProminent)
+                        Text("Plan some meals for these seven days and the list builds itself from them.")
                     }
                 } else {
                     list
                 }
             }
+            // Rebuilt whenever the tab is shown or the week changes. It used to
+            // wait for a tap on Regenerate, so a meal added on the Plan tab was
+            // missing from the list. The rebuild keeps ticks, "already have"
+            // marks and lines added by hand.
+            .task(id: weekStart) { regenerate() }
             .navigationTitle("Grocery List")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

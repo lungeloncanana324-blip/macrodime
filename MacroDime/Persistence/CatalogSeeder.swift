@@ -2,9 +2,13 @@
 //  CatalogSeeder.swift
 //  MacroDime
 //
-//  Mirrors the curated `FoodCatalog` into SwiftData. Idempotent: safe to run on
-//  every launch, which is how catalogue corrections (a price change, a fixed
+//  Mirrors the curated `FoodCatalog` into SwiftData. Idempotent and run on every
+//  launch, which is how catalogue corrections (a monthly price refresh, a fixed
 //  macro value) reach existing installs without a migration.
+//
+//  What changed is decided by `CatalogSync`, by comparing values. There is no
+//  version number to bump by hand: the old one was never bumped by the price
+//  job, so refreshed prices would have reached new installs only.
 //
 
 import Foundation
@@ -13,52 +17,37 @@ import SwiftData
 @MainActor
 enum CatalogSeeder {
 
-    /// Bumped whenever the curated catalogue's *values* change. Stored in
-    /// `UserDefaults`, so the common launch does one integer comparison instead
-    /// of a full table diff.
-    ///
-    /// 2: vegetables gained a culinary `swapGroup` (leafy/cruciferous/root/...),
-    ///    which is what stops the swap engine offering carrots for broccoli.
-    static let catalogVersion = 2
-    private static let versionKey = "MacroDime.catalogVersion"
-
-    /// Inserts missing curated foods and refreshes the ones already present.
-    /// User-created foods are never touched.
-    static func seedIfNeeded(
-        context: ModelContext,
-        defaults: UserDefaults = .standard,
-        force: Bool = false
-    ) {
-        let installed = defaults.integer(forKey: versionKey)
-        guard force || installed < catalogVersion else { return }
-
+    /// Inserts missing curated foods and rewrites the ones whose values have
+    /// changed. User-created foods are never touched, and a launch with nothing
+    /// to change writes nothing. The cost is one fetch of 57 rows.
+    static func seedIfNeeded(context: ModelContext) {
         do {
             let descriptor = FetchDescriptor<FoodItem>(
                 predicate: #Predicate { $0.isUserCreated == false }
             )
             let existing = try context.fetch(descriptor)
-            var existingByID = Dictionary(
+            let changes = CatalogSync.changes(stored: existing.map(\.snapshot))
+            guard !changes.isEmpty else { return }
+
+            let existingByID = Dictionary(
                 existing.map { ($0.catalogID, $0) },
                 uniquingKeysWith: { first, _ in first }
             )
-
-            for snapshot in FoodCatalog.all {
-                if let record = existingByID.removeValue(forKey: snapshot.id) {
-                    record.update(from: snapshot)
-                } else {
-                    context.insert(FoodItem(snapshot: snapshot))
-                }
+            for snapshot in changes.updates {
+                existingByID[snapshot.id]?.update(from: snapshot)
+            }
+            for snapshot in changes.inserts {
+                context.insert(FoodItem(snapshot: snapshot))
             }
 
-            // Curated foods that have been retired from the catalogue. They are
-            // left in place rather than deleted: a past meal may still point at
-            // one, and nullifying that reference would erase history.
+            // Curated foods that have been retired from the catalogue are left
+            // in place rather than deleted: a past meal may still point at one,
+            // and nullifying that reference would erase history.
 
             try context.save()
-            defaults.set(catalogVersion, forKey: versionKey)
         } catch {
-            // A failed seed is recoverable, the next launch retries, since the
-            // version key is only written on success.
+            // A failed seed is recoverable: nothing was marked done, so the
+            // next launch compares again and retries.
             assertionFailure("Catalog seed failed: \(error)")
         }
     }

@@ -8,6 +8,87 @@ This is a gap report, not a plan with dates. It is ordered by what actually
 blocks a submission, so the top of the list is the work that has to happen before
 App Store Connect will accept a build at all.
 
+## 0. Google Play first (added 2026-10-02)
+
+Google Play is now the first store. A SwiftUI app cannot be submitted to Play,
+so `android/` is a native Kotlin and Jetpack Compose port: the same engines,
+catalogue, prices and rules, with the iOS tests ported case for case. How to
+build and sign it is in `android/README.md`; every Play Console answer is in
+`docs/play-store-listing.md`.
+
+### What blocks a Play release
+
+| # | Gap | What it needs | Who | Cost |
+| --- | --- | --- | --- | --- |
+| P1 | **12 testers for 14 days** | New personal accounts must run a closed test with at least 12 testers opted in for 14 consecutive days before production access. The critical path: recruit them first | Lungelo | 14 days minimum, then up to a week of review |
+| P2 | **Upload key** | `keytool` once, `android/keystore.properties`, back it up (README) | Lungelo | 15 min |
+| P3 | **First run on a real phone** | Internal testing track, or install the debug APK over USB. The app has run under Robolectric and been rendered, never on hardware | Lungelo | 30 min |
+| P4 | **Privacy policy URL live** | Same as gap 2 below: switch on GitHub Pages. The policy now covers Android | Lungelo | 10 min |
+| P5 | **App content declarations** | Data safety, health apps, target audience 18+, content rating, ads, financial features: answers written in `docs/play-store-listing.md` | Lungelo | 45 min |
+| P6 | **Public contact email** | Play shows it on the listing | Lungelo | 5 min |
+| P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
+
+### What is verified, and by what
+
+| Layer | Verified how |
+| --- | --- |
+| `android/core` (engines) | 137 JUnit tests on the JVM: the iOS suite case for case, plus the salmon dinner's seven swap candidates matched to the cent against the compiled Swift engine's printed output |
+| Room database and repository | 19 tests against real SQLite (Robolectric): seeding, swaps, grocery regeneration, deletion, damaged values |
+| The app, end to end | 8 Compose UI tests driving the real screens: onboarding, the acknowledgement gate, input validation, the food picker, a reviewed swap, the grocery list, Delete All My Data, editing the profile |
+| How it looks | Every screen rendered in light, dark, a 360 dp phone and large text (`ScreenshotTest.kt`), and reviewed by eye |
+| Store rules | Target API 36 (required since 31 August 2026); the release build fails if any permission is merged into the manifest; cloud backup excluded so "no data collected" holds |
+
+Not verified: a real device, the R8-shrunk release build actually running, and
+the emulator screenshot job (it runs on the first push). Since 2026-10-02 there
+is a test APK of that release build, signed with the debug key so a phone will
+install it (`docs/TESTING.md`, Android section); it builds at 2.0 MB, requests
+no permissions, and Room's `MacroDimeDatabase_Impl` survives shrinking under its
+own name, but it has still not been launched.
+
+### Bugs the port found in the iOS app
+
+Found while porting and fixed on Android first. **Fixed on iOS 2026-10-02**,
+each with the same tests as Android:
+
+1. **A leftover rate multiplied dollar prices.** Choose ZAR, type 18.5, switch
+   back to USD: every price was multiplied by 18.5 under a dollar sign ($9.00
+   read $166.50), and budgets typed afterwards were divided by 18.5. Choosing
+   ZAR before typing a rate labelled every dollar amount as rand. Fixed in
+   `Money.swift`: `CurrencySettings` applies the code and the rate only when
+   `isConverting` (`shownCode`). Tests: `testALeftoverRateIsNotAppliedToDollars`,
+   `testACurrencyWithNoRateYetStillShowsDollars`.
+2. **Price refreshes never reached existing installs.** `CatalogSeeder` reran
+   only when `catalogVersion` was bumped by hand, and `prices.yml` never bumps
+   it. The seeder now compares stored values with the catalogue on every launch
+   (`Engine/CatalogSync.swift`, pure, so tested on Linux in
+   `CatalogSyncTests`, including an install seeded with the hand prices and
+   upgraded to the sourced ones). Knock-on: the seeder was the app's only
+   `UserDefaults` user, so `PrivacyInfo.xcprivacy` now declares no
+   required-reason API, and `ios.yml` fails the build if code starts using
+   `UserDefaults` or `@AppStorage` without declaring CA92.1.
+3. **The onboarding budget warning ignored the chosen currency.** Now formatted
+   through the draft's `CurrencySettings`, like the meters beside it.
+4. **A food tripping two exclusions gave a reason that varied between
+   launches** (exclusions were read from a `Set`). Now checked in declaration
+   order; the test asserts soy sauce under "no soy, no gluten" reports gluten,
+   from sets of different capacities.
+5. **The grocery list waited for a tap on Regenerate,** so a meal added on the
+   Plan tab was missing from it. It now rebuilds when the tab is shown or the
+   week changes (`.task(id: weekStart)`), keeping ticks, "already have" marks
+   and lines added by hand, as Android does.
+
+Items 2 (the seeder half) and 5 touch SwiftData and SwiftUI, so they are
+type-checked only by `ios.yml` and behaviour-checked only by running the app.
+**None of the five has been compiled yet:** WSL failed to start on the day
+(`Wsl/0x80080005`), so the 12 new Swift tests have not run either. The first
+`ios.yml` run after they are pushed is their first compile and run. The Kotlin
+twins pass (137 engine tests).
+
+Product observation, same on both platforms: carb bases swap freely within
+their category, so the engine can offer dried pasta in place of potatoes in a
+dinner. Macro-valid, culinarily debatable; the vegetable fix (culinary
+families) is the pattern if it needs tightening.
+
 ## 1. Blockers: no build can be submitted without these
 
 | # | Gap | What it needs | Who | Cost |

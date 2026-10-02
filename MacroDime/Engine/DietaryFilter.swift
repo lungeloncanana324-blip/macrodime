@@ -57,10 +57,15 @@ enum DietaryFilter {
     /// Order is deliberate: what a food *is* outranks how long it takes, and a
     /// food the user has explicitly banned is reported as banned rather than as
     /// a pattern violation, because the user's own reason is the useful one.
+    /// Exclusions are checked in declaration order, not read from the profile's
+    /// `Set`, whose order varies between launches: soy sauce under "no soy, no
+    /// gluten" must give the same reason every time.
     static func rejection(for food: FoodSnapshot, under profile: DietaryProfile) -> Rejection? {
         if profile.blockedFoodIDs.contains(food.id) { return .blockedByUser }
 
-        if let exclusion = profile.exclusions.first(where: { food.traits.contains($0.trait) }) {
+        if let exclusion = FoodExclusion.allCases.first(where: {
+            profile.exclusions.contains($0) && food.traits.contains($0.trait)
+        }) {
             return .exclusion(exclusion)
         }
 

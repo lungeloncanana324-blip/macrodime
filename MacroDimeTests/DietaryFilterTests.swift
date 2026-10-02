@@ -132,6 +132,25 @@ final class DietaryFilterTests: XCTestCase {
         )
     }
 
+    /// Soy sauce contains soy and gluten. Reading the exclusions from a `Set`
+    /// made the reported reason depend on hash order, which changes between
+    /// launches, so asserting stability within one run proves little. The
+    /// reason is asserted outright instead, from sets built at different
+    /// capacities, whose iteration orders differ even within a run.
+    func testAFoodTrippingTwoExclusionsReportsTheSameReason() throws {
+        let soySauce = try food("soy-sauce")
+        for capacity in [0, 2, 16, 64, 256] {
+            var exclusions = Set<FoodExclusion>(minimumCapacity: capacity)
+            exclusions.insert(.soy)
+            exclusions.insert(.gluten)
+            XCTAssertEqual(
+                DietaryFilter.rejection(for: soySauce, under: DietaryProfile(exclusions: exclusions)),
+                .exclusion(.gluten),
+                "capacity \(capacity)"
+            )
+        }
+    }
+
     /// The combination a coeliac vegan actually needs. If this leaves no protein
     /// anchor, the app has to say so rather than plan a bad diet.
     func testStackedRestrictionsStillLeaveProteinAnchors() {
