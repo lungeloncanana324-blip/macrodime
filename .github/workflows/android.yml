@@ -1,0 +1,153 @@
+name: Android
+
+# Builds, tests and packages the Android app, the one Google Play receives.
+#
+# The build job is the gate: engine tests, the app's Robolectric tests (which
+# drive the real screens: onboarding, the food picker, a swap, the grocery
+# list, deleting everything), release lint, the no-permissions check, and a
+# release bundle. The screenshots job then boots an emulator with demo data and
+# captures every tab for the Play listing.
+#
+# Signing: with no secrets set, bundleRelease produces an unsigned .aab, which
+# proves the release build works but cannot be uploaded. To get an uploadable
+# one, add these repository secrets (android/README.md says how to make them):
+#   MACRODIME_UPLOAD_KEYSTORE_BASE64   the upload keystore, base64 encoded
+#   MACRODIME_UPLOAD_STORE_PASSWORD
+#   MACRODIME_UPLOAD_KEY_ALIAS
+#   MACRODIME_UPLOAD_KEY_PASSWORD
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "versionCode for this bundle (must be higher than the last upload)"
+        required: false
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test, lint, bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The iOS and Android apps compile the same price table from two
+      # generated files. They must never quote different prices.
+      - name: Price tables match across platforms
+        working-directory: .
+        run: python3 scripts/update_prices.py --check-kotlin
+
+      # The house rule for the app's own writing, enforced rather than trusted:
+      # no em, en or figure dashes, horizontal bars or minus signs, typed or
+      # written as escapes. The script builds its pattern from code points.
+      - name: No dash characters in the app's writing
+        working-directory: .
+        run: python3 scripts/check_dashes.py android docs .github scripts
+
+      - name: Restore the upload key
+        env:
+          KEYSTORE: ${{ secrets.MACRODIME_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 --decode > upload.jks
+            echo "MACRODIME_UPLOAD_STORE_FILE=upload.jks" >> "$GITHUB_ENV"
+            echo "Upload key restored; the bundle will be signed."
+          else
+            echo "No upload key secret; the bundle will be unsigned."
+          fi
+
+      - name: Test, lint and bundle
+        env:
+          MACRODIME_UPLOAD_STORE_PASSWORD: ${{ secrets.MACRODIME_UPLOAD_STORE_PASSWORD }}
+          MACRODIME_UPLOAD_KEY_ALIAS: ${{ secrets.MACRODIME_UPLOAD_KEY_ALIAS }}
+          MACRODIME_UPLOAD_KEY_PASSWORD: ${{ secrets.MACRODIME_UPLOAD_KEY_PASSWORD }}
+          VERSION_CODE: ${{ github.event.inputs.version_code }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --console=plain \
+            ${VERSION_CODE:+-PversionCode=$VERSION_CODE} \
+            :core:test :app:testDebugUnitTest :app:lintRelease :app:verifyReleasePermissions :app:bundleRelease
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: macrodime-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          path: |
+            android/core/build/reports/tests/
+            android/app/build/reports/tests/
+            android/app/build/reports/lint-results-release.html
+          if-no-files-found: ignore
+
+  screenshots:
+    name: Emulator launch + Play screenshots
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Hardware acceleration for the emulator on GitHub's Linux runners.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build the debug app
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --console=plain :app:assembleDebug
+
+      # pixel_2 is 1080 x 1920. Play rejects a screenshot whose long side is
+      # more than twice its short side, which rules out the taller Pixel shapes.
+      - name: Boot an emulator and capture every tab
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash android/scripts/capture_screenshots.sh android/play-screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-screenshots
+          path: android/play-screenshots/
+          if-no-files-found: error

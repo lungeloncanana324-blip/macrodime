@@ -7,7 +7,7 @@ rather than writing. Character counts are respected where Apple enforces them.
 
 | Field | Value |
 | --- | --- |
-| App name (30) | `MacroDime: Budget Meal Planner` (29) |
+| App name (30) | `MacroDime: Budget Meal Planner` (30) |
 | Subtitle (30) | `Macros that fit your budget` (28) |
 | Bundle id | `com.lungelo.macrodime` |
 | Primary category | Health and Fitness |

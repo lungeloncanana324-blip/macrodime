@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Where the user's data may go when it leaves the app's own storage.
+
+    Cloud backup: nowhere. Android's backup copies app data to the user's Google
+    Drive, which is end-to-end encrypted only when the phone has a screen lock.
+    MacroDime holds body measurements and progress photos, and its privacy
+    policy and Play Data safety answers say nothing leaves the phone. Google's
+    Data safety guidance does not say whether Android backup counts, so the
+    answer is made true by construction rather than by interpretation.
+
+    Device transfer: everything. Moving to a new phone by cable or direct
+    Wi-Fi copies the data from one phone to the other with no server in
+    between, which keeps "nothing leaves the phone" true and means a new phone
+    does not cost the user their history.
+
+    Applies on Android 12 and later. android:allowBackup="false" in the
+    manifest covers Android 8 to 11.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="." />
+        <include domain="database" path="." />
+        <include domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

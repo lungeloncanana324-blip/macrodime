@@ -3,6 +3,13 @@
 An iOS 17+ app (Swift / SwiftUI / SwiftData) that bridges BMI and body-composition
 science with realistic meal budgeting.
 
+**Android, for Google Play, lives in [`android/`](android/README.md):** a native
+Kotlin and Jetpack Compose port with the same engines, catalogue, prices and
+rules, held to the same tests. It builds, tests and runs on Windows. What Play
+Console needs is in [`docs/play-store-listing.md`](docs/play-store-listing.md),
+and what still blocks the Play release is section 0 of
+[`docs/SHIPPING-GAPS.md`](docs/SHIPPING-GAPS.md).
+
 ## Architecture
 
 Four layers, each depending only on the ones above it. The dependency direction is

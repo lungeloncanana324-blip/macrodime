@@ -1,5 +1,5 @@
 # Written on Windows, compiled on macOS. Without this, every file lands in the
-# repo with CRLF endings and the CI runner sees a diff on checkout — plus Git
+# repo with CRLF endings and the CI runner sees a diff on checkout, and Git
 # prints a "LF will be replaced by CRLF" warning on every single commit.
 #
 # Normalise everything to LF in the repository. Working copies on Windows are
@@ -14,8 +14,17 @@
 *.json    text eol=lf
 *.plist   text eol=lf
 *.sh      text eol=lf
+*.kt      text eol=lf
+*.kts     text eol=lf
+*.toml    text eol=lf
+*.xml     text eol=lf
+*.py      text eol=lf
 
-# Xcode project files, if one is ever committed (it should not be — it is
+# Windows batch files break on LF line endings.
+*.bat     text eol=crlf
+*.ps1     text eol=crlf
+
+# Xcode project files, if one is ever committed (it should not be: it is
 # generated from project.yml).
 *.pbxproj text eol=lf -merge=union
 
@@ -23,4 +32,6 @@
 *.png     binary
 *.jpg     binary
 *.pdf     binary
+*.jar     binary
+*.webp    binary
 *.xcassets/** -text

@@ -12,5 +12,18 @@ DerivedData/
 # macOS
 .DS_Store
 
-# XcodeGen output — derived from project.yml, never commit
+# XcodeGen output: derived from project.yml, never commit
 *.xcodeproj/
+
+# Android
+android/.gradle/
+android/.kotlin/
+android/build/
+android/*/build/
+android/local.properties
+android/play-screenshots/
+# The upload key and its passwords. Never commit them: anyone holding both can
+# sign an update to the app.
+android/keystore.properties
+*.jks
+*.keystore

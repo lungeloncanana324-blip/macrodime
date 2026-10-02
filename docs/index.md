@@ -1,10 +1,11 @@
 # MacroDime
 
-An iOS app that pairs BMI and body-composition science with realistic food
-budgeting.
+An iPhone and Android app that pairs BMI and body-composition science with
+realistic food budgeting.
 
-This folder is published as a website, because App Store Connect requires a live
-privacy policy URL and a live support URL for every submission. Both live here:
+This folder is published as a website, because App Store Connect and Google Play
+Console both require a live privacy policy URL, and App Store Connect a support
+URL too. Both live here:
 
 - [Privacy policy](privacy-policy.html)
 - [Support](support.html)
@@ -17,7 +18,8 @@ privacy policy URL and a live support URL for every submission. Both live here:
 3. Save. The site appears at
    `https://lungeloncanana324-blip.github.io/macrodime/` after a minute or two.
 
-Then use these two values in App Store Connect:
+Then use these values in App Store Connect and in Play Console (Store listing,
+and App content, Privacy policy):
 
 | Field | URL |
 | --- | --- |
