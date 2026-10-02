@@ -142,14 +142,21 @@ struct MacroRingStat: View {
 
 /// Horizontal spend-against-allowance bar. Turns red the moment spend exceeds
 /// the allowance, and states the overage in words as well as colour.
+///
+/// Every figure is as shown: the spend is the day's lines as shown, so it
+/// equals the meal headers below it, and the amount left is shown minus shown,
+/// so the three numbers on the meter always agree with each other.
 @MainActor
 struct BudgetMeter: View {
     /// How money is shown here: which currency, and at what rate.
     @Environment(\.currency) private var prices
 
-    let spent: Double
-    let allowance: Double
+    let meals: [MealItem]
+    let allowanceUSD: Double
     var showsCaption: Bool = true
+
+    private var spent: Double { prices.shownCost(of: meals) }
+    private var allowance: Double { prices.shown(allowanceUSD) }
 
     private var progress: Double {
         guard allowance > 0 else { return 0 }
@@ -162,18 +169,18 @@ struct BudgetMeter: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(prices.format(spent))
+                Text(prices.formatDisplayAmount(spent))
                     .font(.title2.weight(.semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                Text("of \(prices.format(allowance))")
+                Text("of \(prices.formatDisplayAmount(allowance))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Label(
                     isOver
-                        ? "\(prices.format(spent - allowance)) over"
-                        : "\(prices.format(allowance - spent)) left",
+                        ? "\(prices.formatDisplayAmount(spent - allowance)) over"
+                        : "\(prices.formatDisplayAmount(allowance - spent)) left",
                     systemImage: isOver ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
                 )
                 .font(.caption.weight(.medium))
@@ -202,7 +209,7 @@ struct BudgetMeter: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Food budget")
         .accessibilityValue(
-            "\(prices.format(spent)) spent of \(prices.format(allowance))"
+            "\(prices.formatDisplayAmount(spent)) spent of \(prices.formatDisplayAmount(allowance))"
         )
     }
 }

@@ -8,7 +8,10 @@
 package com.lungelo.macrodime.domain
 
 import com.lungelo.macrodime.engine.FoodCatalog
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.Locale
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -197,5 +200,138 @@ class MoneyTest {
     fun disclaimerNamesTheSourceOfThePrices() {
         assertTrue("US" in PriceBook.RATE_DISCLAIMER)
         assertTrue("estimate" in PriceBook.RATE_DISCLAIMER.lowercase())
+    }
+
+    // Totals that add up (gap 22). A total over lines must equal the lines as
+    // shown. Twin of the same section in MoneyTests.swift.
+
+    private fun meal(vararg costs: Double): MealItem {
+        val food = FoodCatalog.all.first()
+        return MealItem("Test", MealSlot.Breakfast, costs.map { Portion(food.withCost(it)) })
+    }
+
+    /**
+     * The bug from the first emulator screenshots: lines of $0.22, $0.57 and
+     * $0.27 under a $1.05 header, because the header summed unrounded costs.
+     */
+    @Test
+    fun aMealHeaderEqualsTheColumnUnderIt() {
+        val usd = CurrencySettings.USD
+        val breakfast = meal(0.215, 0.565, 0.265)
+
+        assertEquals(listOf(0.22, 0.57, 0.27), breakfast.portions.map { usd.shown(it.cost) })
+        assertEquals(1.06, usd.shownCost(breakfast), 1e-9)
+        assertEquals(DisplayFormat.currency(1.06, "USD"), usd.formatTotal(breakfast.portions.map { it.cost }))
+    }
+
+    @Test
+    fun aDayEqualsTheSumOfItsMealHeaders() {
+        val usd = CurrencySettings.USD
+        val day = listOf(meal(0.215, 0.565), meal(0.265, 1.005), meal(2.345))
+        assertEquals(day.sumOf { usd.shownCost(it) }, usd.shownCost(day), 1e-9)
+    }
+
+    /**
+     * Rounding in USD first would not have been enough: a converted column
+     * rounds again. At R18.50 the lines show R4.07, R10.55 and R5.00, which add
+     * to R19.62; converting the dollar total would have said R19.61.
+     */
+    @Test
+    fun aConvertedColumnAddsUpInTheShownCurrency() {
+        val rand = CurrencySettings("ZAR", 18.5)
+        val lines = listOf(0.22, 0.57, 0.27)
+
+        assertEquals(listOf(4.07, 10.55, 5.0), lines.map { rand.shown(it) })
+        assertEquals(19.62, rand.shownTotal(lines), 1e-9)
+        assertEquals(DisplayFormat.currency(19.62, "ZAR"), rand.formatTotal(lines))
+    }
+
+    /** Every amount from $0.000 to $3.000 in tenths of a cent rounds as a person would, halves up. */
+    @Test
+    fun halfCentsRoundUpAsAPersonWouldWorkItOut() {
+        for (k in 0..3_000) {
+            val expected = BigDecimal(k).movePointLeft(3).setScale(2, RoundingMode.HALF_UP).toDouble()
+            assertEquals(expected, CurrencySettings.USD.shown(k / 1_000.0), "${k / 1_000.0}")
+        }
+        // Held in binary as 0.28499999..., which a plain rounding sends down.
+        assertEquals(0.29, CurrencySettings.USD.shown(0.19 * 1.5))
+    }
+
+    @Test
+    fun yenRoundsToWholeYenAndTheColumnStillAddsUp() {
+        val yen = CurrencySettings("JPY", 150.0)
+        assertEquals(0, yen.minorUnits)
+        assertEquals(50.0, yen.shown(0.333))
+        // Three lines of 0.45 yen each show as nothing, so the total is nothing
+        // too, rather than the 1 yen their unrounded sum would print.
+        assertEquals(0.0, yen.shownTotal(listOf(0.003, 0.003, 0.003)))
+    }
+
+    @Test
+    fun dinarKeepsThreeDecimalsInRoundingAndPrinting() {
+        assertEquals(3, CurrencyDigits.minorUnits("KWD"))
+        assertEquals(3, CurrencyDigits.minorUnits(" kwd "))
+        assertEquals(2, CurrencyDigits.minorUnits("ZAR"))
+        assertEquals(2, CurrencyDigits.minorUnits("not a code"))
+        assertEquals(0.002, CurrencySettings("KWD", 0.31).shown(0.005), 1e-12)
+        assertTrue("1.500" in DisplayFormat.currency(1.5, "KWD", Locale.US))
+    }
+
+    /**
+     * Two thousand random columns in five currencies, checked against exact
+     * decimal arithmetic: every line shown is a whole number of the smallest
+     * unit, and the total shown is exactly their sum.
+     */
+    @Test
+    fun randomColumnsAlwaysAddUp() {
+        val random = Random(22)
+        val currencies = listOf(
+            CurrencySettings.USD,
+            CurrencySettings("ZAR", 18.5),
+            CurrencySettings("GBP", 0.79),
+            CurrencySettings("JPY", 151.3),
+            CurrencySettings("KWD", 0.307),
+        )
+        repeat(2_000) {
+            val lines = List(random.nextInt(1, 8)) { random.nextDouble(0.0, 6.0) }
+            for (settings in currencies) {
+                val scale = settings.minorUnits
+                val exactSum = lines
+                    .map { BigDecimal.valueOf(settings.shown(it)).setScale(scale, RoundingMode.UNNECESSARY) }
+                    .fold(BigDecimal.ZERO, BigDecimal::add)
+                val total = BigDecimal.valueOf(settings.shownTotal(lines)).setScale(scale, RoundingMode.UNNECESSARY)
+                assertEquals(exactSum, total, "$lines in ${settings.shownCode}")
+                assertEquals(DisplayFormat.currency(exactSum.toDouble(), settings.shownCode), settings.formatTotal(lines))
+            }
+        }
+    }
+
+    /**
+     * A whole-meal swap is a chain of single swaps, and the sheet lists each
+     * step's saving under a title with the total. Each step is the drop in the
+     * shown cost, so the steps add up to the title exactly, in any currency.
+     */
+    @Test
+    fun swapStepsAddUpToTheSavingInTheTitle() {
+        val engine = com.lungelo.macrodime.engine.BudgetFoodEngine(catalog = FoodCatalog.all)
+        val dinner = MealItem(
+            "Salmon dinner",
+            MealSlot.Dinner,
+            listOf("salmon-fillet", "white-rice", "fresh-broccoli", "olive-oil").map { Portion(assertNotNull(FoodCatalog.food(it))) },
+        )
+        val swap = assertNotNull(engine.bestSwap(dinner))
+        assertTrue(swap.portionSwaps.isNotEmpty())
+
+        for (settings in listOf(CurrencySettings.USD, CurrencySettings("ZAR", 18.5))) {
+            // The sheet's premise: the last step's meal is the swapped meal.
+            assertEquals(settings.shownCost(swap.swapped), settings.shownCost(swap.portionSwaps.last().resultingMeal), 1e-9)
+
+            val steps = swap.shownStepSavings(settings)
+            assertEquals(swap.portionSwaps.size, steps.size)
+            val title = swap.shownSaving(settings)
+            assertEquals(title, steps.sum(), 1e-9)
+            assertEquals(settings.shownCost(swap.original) - settings.shownCost(swap.swapped), title, 1e-9)
+            assertTrue(title > 0, "a swap the engine offers must show a saving")
+        }
     }
 }

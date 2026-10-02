@@ -39,8 +39,6 @@ data class GroceryState(
     val weeklyBudget: Double = 0.0,
     val isLoaded: Boolean = false,
 ) {
-    val outstandingTotal: Double get() = items.sumOf { it.outstandingCost }
-    val fullTotal: Double get() = items.sumOf { it.estimatedCost }
     val checkedCount: Int get() = items.count { it.isChecked }
 
     /** The week's items in store-walk order: unticked first, then most expensive, within each aisle. */

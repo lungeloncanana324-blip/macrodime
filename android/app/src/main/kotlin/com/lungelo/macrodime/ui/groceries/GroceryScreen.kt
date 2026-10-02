@@ -167,24 +167,29 @@ fun GroceryScreen(model: GroceryViewModel, onGoToPlan: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             item {
+                // Totals are the lines as shown, added up, so each one equals
+                // the sections below it to the cent, in any currency.
+                val stillToBuy = prices.shownTotal(state.items.map { it.outstandingCost })
+                val fullList = prices.shownTotal(state.items.map { it.estimatedCost })
+                val budget = prices.shown(state.weeklyBudget)
                 MacroCard(Modifier.contentWidth()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
                             "Still to buy",
-                            prices.format(state.outstandingTotal),
+                            prices.formatDisplayAmount(stillToBuy),
                             Modifier.weight(1f),
                             "${state.checkedCount} of ${state.items.size} ticked",
                             Icons.Rounded.ShoppingCart,
                             Brand.colors.underBudget,
                         )
-                        StatTile("Full list", prices.format(state.fullTotal), Modifier.weight(1f), "Before pantry items", Icons.Rounded.Functions)
+                        StatTile("Full list", prices.formatDisplayAmount(fullList), Modifier.weight(1f), "Before pantry items", Icons.Rounded.Functions)
                         if (state.weeklyBudget > 0) {
-                            val within = state.fullTotal <= state.weeklyBudget
+                            val within = fullList <= budget
                             StatTile(
                                 "Weekly budget",
-                                prices.format(state.weeklyBudget),
+                                prices.formatDisplayAmount(budget),
                                 Modifier.weight(1f),
-                                if (within) "Within budget" else "Over by ${prices.format(state.fullTotal - state.weeklyBudget)}",
+                                if (within) "Within budget" else "Over by ${prices.formatDisplayAmount(fullList - budget)}",
                                 if (within) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
                                 if (within) Brand.colors.underBudget else Brand.colors.overBudget,
                             )
@@ -208,7 +213,8 @@ fun GroceryScreen(model: GroceryViewModel, onGoToPlan: () -> Unit) {
                             Icon(section.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(section.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            Text(prices.format(items.sumOf { it.outstandingCost }), style = MaterialTheme.typography.labelLarge)
+                            // Struck-through "already have" lines are not in it, by design.
+                            Text(prices.formatTotal(items.map { it.outstandingCost }), style = MaterialTheme.typography.labelLarge)
                         }
                         Column {
                             items.forEachIndexed { index, item ->

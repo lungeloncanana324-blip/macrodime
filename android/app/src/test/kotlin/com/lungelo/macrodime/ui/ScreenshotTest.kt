@@ -179,7 +179,7 @@ class LightScreenshotTest : ScreenshotBase() {
     fun portionSwapSheet() {
         val meal = salmonDinner()
         val options = BudgetFoodEngine(FoodCatalog.all).rankedReplacements(meal.portions.first(), meal)
-        sheet("light-sheet-portion-swap") { PortionSwapContent(meal.portions.first(), options, onSelect = {}, onDismiss = {}) }
+        sheet("light-sheet-portion-swap") { PortionSwapContent(meal.portions.first(), meal, options, onSelect = {}, onDismiss = {}) }
     }
 
     @Test

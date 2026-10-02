@@ -65,6 +65,7 @@ struct MealPlannerView: View {
             .sheet(item: $portionPicker) { picker in
                 PortionSwapSheet(
                     portion: picker.portion,
+                    meal: picker.meal,
                     options: model.alternatives(for: picker.portion, in: picker.meal)
                 ) { chosen in
                     model.apply(chosen, in: picker.meal, context: context)
@@ -91,7 +92,7 @@ struct MealPlannerView: View {
                     .frame(maxWidth: .infinity)
                     Divider()
                 }
-                BudgetMeter(spent: model.spend, allowance: model.dailyBudget, showsCaption: false)
+                BudgetMeter(meals: model.meals, allowanceUSD: model.dailyBudget, showsCaption: false)
             }
         }
     }
@@ -110,7 +111,9 @@ struct MealPlannerView: View {
                         .font(.headline)
                     Spacer()
                     if let meal, !meal.isEmpty {
-                        Text(prices.format(meal.cost))
+                        // The lines as shown, added up: the header always
+                        // equals the column.
+                        Text(prices.formatDisplayAmount(prices.shownCost(of: meal)))
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
                         TierChip(tier: meal.effectiveTier)
@@ -136,7 +139,7 @@ struct MealPlannerView: View {
                             swapUnderReview = swap
                         } label: {
                             Label(
-                                "Swap to save \(prices.format(swap.savings))",
+                                "Swap to save \(prices.formatDisplayAmount(swap.shownSaving(in: prices)))",
                                 systemImage: "arrow.triangle.2.circlepath"
                             )
                             .font(.subheadline.weight(.medium))
@@ -326,6 +329,9 @@ struct PortionSwapSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let portion: Portion
+    /// The meal the portion sits in, so each option's saving is the drop in
+    /// that meal's shown cost, the change the user will see in its header.
+    let meal: MealItem
     let options: [PortionSwap]
     let onSelect: (PortionSwap) -> Void
 
@@ -385,7 +391,7 @@ struct PortionSwapSheet: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 6)
-            Text("Saves \(prices.format(option.savings))")
+            Text("Saves \(prices.formatDisplayAmount(prices.shownSaving(from: meal, to: option.resultingMeal)))")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(Brand.underBudget)

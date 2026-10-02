@@ -33,7 +33,6 @@ import com.lungelo.macrodime.domain.MealItem
 import com.lungelo.macrodime.domain.MealSlot
 import com.lungelo.macrodime.domain.NutritionFacts
 import com.lungelo.macrodime.domain.Portion
-import com.lungelo.macrodime.domain.totalCost
 import com.lungelo.macrodime.domain.totalNutrition
 import com.lungelo.macrodime.engine.BudgetFoodEngine
 import com.lungelo.macrodime.engine.DietaryFilter
@@ -79,12 +78,9 @@ data class DayPlanState(
     val measurements: List<BodyMeasurementEntity> = emptyList(),
 ) {
     val consumed: NutritionFacts get() = meals.totalNutrition
-    val spend: Double get() = meals.totalCost
 
     /** Remaining allowance per macro. Negative means over target. */
     val remaining: NutritionFacts get() = targets?.let { it - consumed } ?: NutritionFacts.ZERO
-
-    val potentialSavings: Double get() = swaps.values.sumOf { it.savings }
 
     /** The swap worth showing first: the one that saves the most. */
     val bestSwap: MealSwap? get() = swaps.values.maxByOrNull { it.savings }

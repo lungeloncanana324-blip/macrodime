@@ -53,10 +53,10 @@ No Android phone? Upload the same APK at appetize.io and pick Android.
 | # | Do this | Expect |
 | --- | --- | --- |
 | 1 | Finish onboarding, ticking the health acknowledgement | Start Planning unlocks only after the tick; targets and budget match what you entered |
-| 2 | Plan tab: add a food, then change its servings | Totals, rings and the day's cost move together |
+| 2 | Plan tab: add a food, then change its servings | Totals, rings and the day's cost move together, and each meal's header is exactly its lines added up |
 | 3 | Open a meal's swaps, apply one | The saving shown on the card is the saving applied; macros stay within the stated tolerance |
 | 4 | Groceries tab, straight after step 2 | The food you added is already on the list, without tapping anything |
-| 5 | Settings: currency ZAR, rate 18.5 | Every amount shows in rand, about 18.5 times the dollar figure |
+| 5 | Settings: currency ZAR, rate 18.5 | Every amount shows in rand, about 18.5 times the dollar figure, and every meal header and grocery section still adds up to the rand lines under it |
 | 6 | Switch the currency back to USD | Every amount returns to the original dollar figure (this was a real bug: $9.00 used to read $166.50) |
 | 7 | Settings: Delete All My Data | The app returns to onboarding with nothing left |
 | 8 | Turn on dark mode and the largest font size, revisit each tab | Nothing clipped, overlapping or unreadable |

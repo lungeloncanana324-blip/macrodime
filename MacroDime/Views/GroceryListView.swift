@@ -54,8 +54,11 @@ struct GroceryListView: View {
     }
 
     private var weekItems: [GroceryItem] { allItems.filter { $0.weekStart == weekStart } }
-    private var outstandingTotal: Double { weekItems.reduce(0) { $0 + $1.outstandingCost } }
-    private var fullTotal: Double { weekItems.reduce(0) { $0 + $1.estimatedCost } }
+    // Totals are the lines as shown, added up, in the shown currency, so each
+    // one equals the sections below it to the cent.
+    private var outstandingTotal: Double { prices.shownTotal(weekItems.map(\.outstandingCost)) }
+    private var fullTotal: Double { prices.shownTotal(weekItems.map(\.estimatedCost)) }
+    private var shownWeeklyBudget: Double { prices.shown(weeklyBudget) }
     private var checkedCount: Int { weekItems.filter(\.isChecked).count }
 
     private var weeklyBudget: Double { (profile?.dailyFoodBudget ?? 0) * 7 }
@@ -150,7 +153,8 @@ struct GroceryListView: View {
                     HStack {
                         Label(group.section.displayName, systemImage: group.section.systemImage)
                         Spacer()
-                        Text(prices.format(group.items.reduce(0) { $0 + $1.outstandingCost }))
+                        // Struck-through "already have" lines are not in it, by design.
+                        Text(prices.formatTotal(group.items.map(\.outstandingCost)))
                             .monospacedDigit()
                     }
                 }
@@ -164,14 +168,14 @@ struct GroceryListView: View {
             HStack {
                 StatTile(
                     title: "Still to buy",
-                    value: prices.format(outstandingTotal),
+                    value: prices.formatDisplayAmount(outstandingTotal),
                     caption: "\(checkedCount) of \(weekItems.count) ticked",
                     systemImage: "cart.fill",
                     tint: Brand.underBudget
                 )
                 StatTile(
                     title: "Full list",
-                    value: prices.format(fullTotal),
+                    value: prices.formatDisplayAmount(fullTotal),
                     caption: "Before pantry items",
                     systemImage: "sum",
                     tint: .secondary
@@ -179,10 +183,12 @@ struct GroceryListView: View {
                 if weeklyBudget > 0 {
                     StatTile(
                         title: "Weekly budget",
-                        value: prices.format(weeklyBudget),
-                        caption: fullTotal <= weeklyBudget ? "Within budget" : "Over by \(prices.format(fullTotal - weeklyBudget))",
-                        systemImage: fullTotal <= weeklyBudget ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
-                        tint: fullTotal <= weeklyBudget ? Brand.underBudget : Brand.carbs
+                        value: prices.formatDisplayAmount(shownWeeklyBudget),
+                        caption: fullTotal <= shownWeeklyBudget
+                            ? "Within budget"
+                            : "Over by \(prices.formatDisplayAmount(fullTotal - shownWeeklyBudget))",
+                        systemImage: fullTotal <= shownWeeklyBudget ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
+                        tint: fullTotal <= shownWeeklyBudget ? Brand.underBudget : Brand.carbs
                     )
                 }
             }

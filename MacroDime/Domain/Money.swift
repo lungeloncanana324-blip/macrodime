@@ -38,6 +38,41 @@ enum PriceBook {
     static let rateDisclaimer = "Prices are US supermarket averages. The rate is your own estimate, so treat converted amounts as approximate."
 }
 
+// MARK: - Minor units
+
+/// How many digits a currency is shown and rounded with: cents for dollars and
+/// rand, none for yen, three for dinar (ISO 4217 minor units).
+///
+/// One table, read by both the formatter and the rounding, so a figure is never
+/// rounded to one precision and printed at another. The Android app holds the
+/// same table, so the two platforms agree on every code.
+enum CurrencyDigits {
+    private static let none: Set<String> = [
+        "BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG",
+        "RWF", "UGX", "UYI", "VND", "VUV", "XAF", "XOF", "XPF"
+    ]
+    private static let three: Set<String> = ["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"]
+
+    static func minorUnits(for code: String) -> Int {
+        let code = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if none.contains(code) { return 0 }
+        if three.contains(code) { return 3 }
+        return 2
+    }
+
+    /// `amount` to `digits` decimal places, halves away from zero. The nudge,
+    /// a ten-millionth of the smallest unit, keeps a half cent that binary
+    /// floating point stores just below the half (0.19 x 1.5 is held as
+    /// 0.28499999...) rounding up, as a person working it out would.
+    static func round(_ amount: Double, toDigits digits: Int) -> Double {
+        guard amount.isFinite else { return amount }
+        let scale = pow(10.0, Double(digits))
+        let scaled = amount * scale
+        let nudged = scaled + (scaled >= 0 ? 1e-7 : -1e-7)
+        return nudged.rounded() / scale
+    }
+}
+
 // MARK: - Money
 
 /// An amount in a named currency.
@@ -133,16 +168,59 @@ struct CurrencySettings: Hashable, Sendable {
         displayAmount / appliedRate
     }
 
+    /// Digits after the decimal point in `shownCode`: 2 for dollars and rand,
+    /// 0 for yen.
+    var minorUnits: Int { CurrencyDigits.minorUnits(for: shownCode) }
+
+    /// A catalogue amount (USD) exactly as the screen shows it: converted, then
+    /// rounded to the shown currency's smallest unit.
+    func shown(_ usd: Double) -> Double {
+        CurrencyDigits.round(convert(usd), toDigits: minorUnits)
+    }
+
+    /// Lines added up the way a reader adds them: each as shown, then summed.
+    ///
+    /// Summing the unrounded costs and rounding once let a total miss a cent
+    /// against the column above it: a breakfast of $0.22, $0.57 and $0.27 was
+    /// headed $1.05. Rounding in USD first would not cure it either, because a
+    /// converted column rounds again in the shown currency; so every total over
+    /// lines is built from the lines as shown, in the shown currency.
+    func shownTotal<Lines: Sequence>(_ usdLines: Lines) -> Double where Lines.Element == Double {
+        CurrencyDigits.round(usdLines.reduce(0) { $0 + shown($1) }, toDigits: minorUnits)
+    }
+
+    /// A meal's cost as shown: the sum of its lines as shown, so the header
+    /// equals the column.
+    func shownCost(of meal: MealItem) -> Double {
+        shownTotal(meal.portions.map(\.cost))
+    }
+
+    /// A day's cost as shown: every line of every meal, as shown. Equals the
+    /// sum of the meal headers.
+    func shownCost(of meals: [MealItem]) -> Double {
+        shownTotal(meals.flatMap { $0.portions.map(\.cost) })
+    }
+
+    /// What a swap saves as shown: exactly the drop in the meal's shown cost.
+    func shownSaving(from original: MealItem, to swapped: MealItem) -> Double {
+        CurrencyDigits.round(shownCost(of: original) - shownCost(of: swapped), toDigits: minorUnits)
+    }
+
     /// Formats a USD amount, converting first when the user has opted in.
     /// This is the only path a catalogue price should take to the screen.
     func format(_ usd: Double) -> String {
-        DisplayFormat.currency(convert(usd), code: shownCode)
+        DisplayFormat.currency(shown(usd), code: shownCode)
     }
 
-    /// Formats an already-converted amount, for values that were derived in
-    /// display units (a difference between two converted amounts, say).
+    /// Formats a total of USD lines as `shownTotal` builds it.
+    func formatTotal<Lines: Sequence>(_ usdLines: Lines) -> String where Lines.Element == Double {
+        DisplayFormat.currency(shownTotal(usdLines), code: shownCode)
+    }
+
+    /// Formats an amount already in shown units, such as a difference of two
+    /// shown totals.
     func formatDisplayAmount(_ amount: Double) -> String {
-        DisplayFormat.currency(amount, code: shownCode)
+        DisplayFormat.currency(CurrencyDigits.round(amount, toDigits: minorUnits), code: shownCode)
     }
 
     /// The currency chosen from the device locale, offered as a starting point

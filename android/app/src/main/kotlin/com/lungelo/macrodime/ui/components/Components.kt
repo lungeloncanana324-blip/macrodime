@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.min
 import com.lungelo.macrodime.domain.BudgetTier
 import com.lungelo.macrodime.domain.CurrencySettings
 import com.lungelo.macrodime.domain.DisplayFormat
+import com.lungelo.macrodime.domain.MealItem
 import com.lungelo.macrodime.domain.NutritionFacts
 import com.lungelo.macrodime.domain.roundToIntHalfAway
 import com.lungelo.macrodime.engine.MacroAxis
@@ -246,28 +247,39 @@ fun MacroRingRow(
 /**
  * Spend against allowance. Turns red the moment spend exceeds the allowance,
  * and states the overage in words as well as colour.
+ *
+ * Every figure is as shown: the spend is the day's lines as shown, so it equals
+ * the meal headers below it, and the amount left is shown minus shown, so the
+ * three numbers on the meter always agree with each other.
  */
 @Composable
-fun BudgetMeter(spent: Double, allowance: Double, showsCaption: Boolean = true) {
+fun BudgetMeter(meals: List<MealItem>, allowanceUSD: Double, showsCaption: Boolean = true) {
     val prices = LocalCurrency.current
+    val spent = prices.shownCost(meals)
+    val allowance = prices.shown(allowanceUSD)
     val progress = if (allowance > 0) spent / allowance else 0.0
     val isOver = spent > allowance && allowance > 0
     val tint = if (isOver) Brand.colors.overBudget else Brand.colors.underBudget
     val animated by animateFloatAsState(progress.toFloat().coerceIn(0f, 1f), label = "budget")
-    val status = if (isOver) "${prices.format(spent - allowance)} over" else "${prices.format(allowance - spent)} left"
+    val status = if (isOver) {
+        "${prices.formatDisplayAmount(spent - allowance)} over"
+    } else {
+        "${prices.formatDisplayAmount(allowance - spent)} left"
+    }
 
     Column(
         Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "Food budget: ${prices.format(spent)} spent of ${prices.format(allowance)}, $status"
+            contentDescription =
+                "Food budget: ${prices.formatDisplayAmount(spent)} spent of ${prices.formatDisplayAmount(allowance)}, $status"
         },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
-                Text(prices.format(spent), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text(prices.formatDisplayAmount(spent), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "of ${prices.format(allowance)}",
+                    "of ${prices.formatDisplayAmount(allowance)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 3.dp),

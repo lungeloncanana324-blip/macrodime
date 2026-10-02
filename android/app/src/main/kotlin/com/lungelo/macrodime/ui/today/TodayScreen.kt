@@ -180,14 +180,16 @@ private fun CostCard(state: DayPlanState) {
             CardTitle("Cost tracker", Modifier.weight(1f))
             TierChip(state.budgetTier)
         }
-        BudgetMeter(state.spend, state.dailyBudget)
-        if (state.potentialSavings > 0) {
+        BudgetMeter(state.meals, state.dailyBudget)
+        // Each swap's saving as shown on its own card, added up.
+        val available = state.swaps.values.sumOf { it.shownSaving(prices) }
+        if (available > 0) {
             HorizontalDivider()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = Brand.colors.underBudget, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("${prices.format(state.potentialSavings)} of swaps available", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text("${prices.formatDisplayAmount(available)} of swaps available", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Caption("Same macros, cheaper ingredients")
                 }
             }
@@ -203,13 +205,15 @@ private fun SwapPreviewCard(best: MealSwap, onReview: () -> Unit) {
             Icon(Icons.Rounded.Autorenew, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             CardTitle("Low-cost swap", Modifier.weight(1f))
-            Text("Save ${prices.format(best.savings)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Brand.colors.underBudget)
+            Text("Save ${prices.formatDisplayAmount(best.shownSaving(prices))}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Brand.colors.underBudget)
         }
         Caption(best.original.name)
         // Old ingredient struck through on one line, its replacement under it,
         // the saving aligned on the right: long names wrap without breaking
         // the arrow away from either side.
-        best.portionSwaps.forEach { swap ->
+        // Step by step, so the lines add up to the saving in the title.
+        val steps = best.shownStepSavings(prices)
+        best.portionSwaps.forEachIndexed { index, swap ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -230,7 +234,11 @@ private fun SwapPreviewCard(best: MealSwap, onReview: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Text(prices.format(swap.savings), style = MaterialTheme.typography.labelLarge, color = Brand.colors.underBudget)
+                Text(
+                    prices.formatDisplayAmount(steps[index]),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Brand.colors.underBudget,
+                )
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -66,6 +66,7 @@ import com.lungelo.macrodime.domain.BudgetTier
 import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.FoodCategory
 import com.lungelo.macrodime.domain.FoodSnapshot
+import com.lungelo.macrodime.domain.MealItem
 import com.lungelo.macrodime.domain.MealSlot
 import com.lungelo.macrodime.domain.Portion
 import com.lungelo.macrodime.engine.MacroAxis
@@ -108,7 +109,7 @@ fun SwapReviewSheet(swap: MealSwap, onApply: () -> Unit, onDismiss: () -> Unit) 
 fun SwapReviewContent(swap: MealSwap, onApply: () -> Unit, onDismiss: () -> Unit) {
     val prices = LocalCurrency.current
     Column {
-        SheetHeader("Save ${prices.format(swap.savings)}", onDismiss) {
+        SheetHeader("Save ${prices.formatDisplayAmount(swap.shownSaving(prices))}", onDismiss) {
             Button(onClick = { onApply(); onDismiss() }, modifier = Modifier.testTag("apply-swap")) { Text("Apply") }
         }
         Column(
@@ -117,11 +118,14 @@ fun SwapReviewContent(swap: MealSwap, onApply: () -> Unit, onDismiss: () -> Unit
         ) {
             MacroCard {
                 CardTitle("Substitutions")
-                swap.portionSwaps.forEach { portionSwap ->
+                // Each step saves the drop in the meal's shown cost from the
+                // step before, so the steps add up to the saving in the title.
+                val steps = swap.shownStepSavings(prices)
+                swap.portionSwaps.forEachIndexed { index, portionSwap ->
                     Column {
                         Text(portionSwap.headline, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                         Text(
-                            "${portionSwap.replacement.quantityDescription} · saves ${prices.format(portionSwap.savings)}",
+                            "${portionSwap.replacement.quantityDescription} · saves ${prices.formatDisplayAmount(steps[index])}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -155,7 +159,12 @@ fun SwapReviewContent(swap: MealSwap, onApply: () -> Unit, onDismiss: () -> Unit
 
             MacroCard {
                 CardTitle("Effect")
-                ComparisonRow("Cost", prices.format(swap.original.cost), prices.format(swap.swapped.cost), isGood = true)
+                ComparisonRow(
+                    "Cost",
+                    prices.formatDisplayAmount(prices.shownCost(swap.original)),
+                    prices.formatDisplayAmount(prices.shownCost(swap.swapped)),
+                    isGood = true,
+                )
                 HorizontalDivider()
                 MacroAxis.entries.forEach { axis ->
                     ComparisonRow(
@@ -206,15 +215,15 @@ private fun ComparisonRow(title: String, before: String, after: String, isGood: 
 
 /** Ranked alternatives for one ingredient, so the user can choose rather than accept the top pick. */
 @Composable
-fun PortionSwapSheet(portion: Portion, options: List<PortionSwap>, onSelect: (PortionSwap) -> Unit, onDismiss: () -> Unit) {
+fun PortionSwapSheet(portion: Portion, meal: MealItem, options: List<PortionSwap>, onSelect: (PortionSwap) -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        PortionSwapContent(portion, options, onSelect, onDismiss)
+        PortionSwapContent(portion, meal, options, onSelect, onDismiss)
     }
 }
 
 /** The per-ingredient swap list's body, apart from its sheet so tests can render it. */
 @Composable
-fun PortionSwapContent(portion: Portion, options: List<PortionSwap>, onSelect: (PortionSwap) -> Unit, onDismiss: () -> Unit) {
+fun PortionSwapContent(portion: Portion, meal: MealItem, options: List<PortionSwap>, onSelect: (PortionSwap) -> Unit, onDismiss: () -> Unit) {
     val prices = LocalCurrency.current
     Column {
         SheetHeader("Low-Cost Swap", onDismiss)
@@ -254,7 +263,7 @@ fun PortionSwapContent(portion: Portion, options: List<PortionSwap>, onSelect: (
                             }
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Saves ${prices.format(option.savings)}",
+                                "Saves ${prices.formatDisplayAmount(prices.shownSaving(meal, option.resultingMeal))}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Brand.colors.underBudget,

@@ -140,15 +140,20 @@ struct DashboardView: View {
                     TierChip(tier: model.budgetTier)
                 }
 
-                BudgetMeter(spent: model.spend, allowance: model.dailyBudget)
+                BudgetMeter(meals: model.meals, allowanceUSD: model.dailyBudget)
 
-                if model.potentialSavings > 0 {
+                // Each swap's saving as shown on its own card, added up.
+                let available = model.meals
+                    .compactMap { model.swapPreview(for: $0) }
+                    .reduce(0.0) { $0 + $1.shownSaving(in: prices) }
+
+                if available > 0 {
                     Divider()
                     HStack(spacing: 10) {
                         Image(systemName: "sparkles")
                             .foregroundStyle(Brand.underBudget)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(prices.format(model.potentialSavings)) of swaps available")
+                            Text("\(prices.formatDisplayAmount(available)) of swaps available")
                                 .font(.subheadline.weight(.medium))
                             Text("Same macros, cheaper ingredients")
                                 .font(.caption)
@@ -178,13 +183,15 @@ struct DashboardView: View {
             .sorted { $0.savings > $1.savings }
 
         if let best = swaps.first {
+            // Step by step, so the lines add up to the saving in the title.
+            let steps = best.shownStepSavings(in: prices)
             CardContainer {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Label("Low-cost swap", systemImage: "arrow.triangle.2.circlepath")
                             .font(.headline)
                         Spacer()
-                        Text("Save \(prices.format(best.savings))")
+                        Text("Save \(prices.formatDisplayAmount(best.shownSaving(in: prices)))")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Brand.underBudget)
                     }
@@ -193,7 +200,7 @@ struct DashboardView: View {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
 
-                    ForEach(best.portionSwaps) { swap in
+                    ForEach(Array(best.portionSwaps.enumerated()), id: \.element.id) { index, swap in
                         HStack(spacing: 8) {
                             Text(swap.original.food.name)
                                 .strikethrough()
@@ -204,7 +211,7 @@ struct DashboardView: View {
                             Text(swap.replacement.food.name)
                                 .fontWeight(.medium)
                             Spacer(minLength: 4)
-                            Text(prices.format(swap.savings))
+                            Text(prices.formatDisplayAmount(steps[index]))
                                 .font(.caption.weight(.medium))
                                 .monospacedDigit()
                                 .foregroundStyle(Brand.underBudget)
@@ -337,20 +344,23 @@ struct SwapReviewSheet: View {
     let onApply: () -> Void
 
     var body: some View {
+        // Each step saves the drop in the meal's shown cost from the step
+        // before, so the steps add up to the saving in the title.
+        let steps = swap.shownStepSavings(in: prices)
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     CardContainer {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Substitutions").font(.headline)
-                            ForEach(swap.portionSwaps) { portionSwap in
+                            ForEach(Array(swap.portionSwaps.enumerated()), id: \.element.id) { index, portionSwap in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(portionSwap.headline)
                                         .font(.subheadline.weight(.medium))
                                     HStack(spacing: 8) {
                                         Text(portionSwap.replacement.quantityDescription)
                                         Text("·")
-                                        Text("saves \(prices.format(portionSwap.savings))")
+                                        Text("saves \(prices.formatDisplayAmount(steps[index]))")
                                             .foregroundStyle(Brand.underBudget)
                                     }
                                     .font(.caption)
@@ -390,8 +400,8 @@ struct SwapReviewSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Effect").font(.headline)
                             comparisonRow("Cost",
-                                          prices.format(swap.original.cost),
-                                          prices.format(swap.swapped.cost),
+                                          prices.formatDisplayAmount(prices.shownCost(of: swap.original)),
+                                          prices.formatDisplayAmount(prices.shownCost(of: swap.swapped)),
                                           isGood: true)
                             Divider()
                             macroComparison(.calories)
@@ -411,7 +421,7 @@ struct SwapReviewSheet: View {
                 .padding(16)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Save \(prices.format(swap.savings))")
+            .navigationTitle("Save \(prices.formatDisplayAmount(swap.shownSaving(in: prices)))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

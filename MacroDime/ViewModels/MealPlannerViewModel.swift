@@ -106,7 +106,6 @@ final class MealPlannerViewModel {
     // MARK: Totals
 
     var consumed: NutritionFacts { meals.totalNutrition }
-    var spend: Double { meals.totalCost }
 
     /// Remaining allowance for each macro. Negative values mean over target.
     var remaining: NutritionFacts {
@@ -146,9 +145,6 @@ final class MealPlannerViewModel {
     func alternatives(for portion: Portion, in meal: MealItem) -> [PortionSwap] {
         engine.rankedReplacements(for: portion, within: meal)
     }
-
-    /// Total savings available across the day, without changing anything.
-    var potentialSavings: Double { engine.potentialSavings(for: meals) }
 
     var budgetPowerhouses: [FoodSnapshot] {
         engine.budgetPowerhouses(tier: budgetTier, limit: 5)

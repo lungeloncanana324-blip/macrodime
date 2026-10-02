@@ -206,6 +206,22 @@ struct MealSwap: Identifiable, Hashable, Sendable {
     var allAdjustments: [PortionAdjustment] {
         portionSwaps.flatMap(\.rebalanced)
     }
+
+    /// What the whole swap saves as shown: the drop in the meal's shown cost.
+    func shownSaving(in prices: CurrencySettings) -> Double {
+        prices.shownSaving(from: original, to: swapped)
+    }
+
+    /// What each step saves as shown, in order: the drop in the meal's shown
+    /// cost from the step before. The steps add up exactly to `shownSaving`,
+    /// which is the figure a list of steps sits under.
+    func shownStepSavings(in prices: CurrencySettings) -> [Double] {
+        var before = original
+        return portionSwaps.map { step in
+            defer { before = step.resultingMeal }
+            return prices.shownSaving(from: before, to: step.resultingMeal)
+        }
+    }
 }
 
 // MARK: - Engine

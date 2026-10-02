@@ -23,6 +23,7 @@ package com.lungelo.macrodime.engine
 
 import com.lungelo.macrodime.domain.AtwaterFactor
 import com.lungelo.macrodime.domain.BudgetTier
+import com.lungelo.macrodime.domain.CurrencySettings
 import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.FoodCategory
 import com.lungelo.macrodime.domain.FoodSnapshot
@@ -174,6 +175,21 @@ data class MealSwap(
 
     /** Every rebalance made along the way, flattened for display. */
     val allAdjustments: List<PortionAdjustment> get() = portionSwaps.flatMap { it.rebalanced }
+
+    /** What the whole swap saves as shown: the drop in the meal's shown cost. */
+    fun shownSaving(prices: CurrencySettings): Double = prices.shownSaving(original, swapped)
+
+    /**
+     * What each step saves as shown, in order: the drop in the meal's shown
+     * cost from the step before. The steps add up exactly to [shownSaving],
+     * which is the figure a list of steps sits under.
+     */
+    fun shownStepSavings(prices: CurrencySettings): List<Double> {
+        var before = original
+        return portionSwaps.map { step ->
+            prices.shownSaving(before, step.resultingMeal).also { before = step.resultingMeal }
+        }
+    }
 }
 
 class BudgetFoodEngine(

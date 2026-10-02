@@ -145,7 +145,7 @@ fun PlanScreen(model: DayPlanViewModel) {
                         MacroRingRow(state.consumed, targets, ringSize = 62.dp, lineWidth = 8.dp)
                         HorizontalDivider()
                     }
-                    BudgetMeter(state.spend, state.dailyBudget, showsCaption = false)
+                    BudgetMeter(state.meals, state.dailyBudget, showsCaption = false)
                 }
             }
             items(MealSlot.entries, key = { it.rawValue }) { slot ->
@@ -173,6 +173,7 @@ fun PlanScreen(model: DayPlanViewModel) {
     portionTarget?.let { target ->
         PortionSwapSheet(
             target.portion,
+            target.meal,
             remember(target) { model.alternatives(target.portion, target.meal) },
             onSelect = { model.apply(it, target.meal) },
             onDismiss = { portionTarget = null },
@@ -226,7 +227,8 @@ private fun MealCard(
             Spacer(Modifier.width(8.dp))
             Text(slot.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (meal != null && !meal.isEmpty) {
-                Text(prices.format(meal.cost), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                // The lines as shown, added up: the header always equals the column.
+                Text(prices.formatDisplayAmount(prices.shownCost(meal)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(8.dp))
                 TierChip(meal.effectiveTier)
             }
@@ -256,7 +258,7 @@ private fun MealCard(
                 ) {
                     Icon(Icons.Rounded.Autorenew, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Swap to save ${prices.format(swap.savings)}")
+                    Text("Swap to save ${prices.formatDisplayAmount(swap.shownSaving(prices))}")
                 }
             }
         } else {

@@ -68,8 +68,15 @@ enum DisplayFormat {
     /// the device's currency put a rand or euro sign on a dollar figure, which
     /// is a wrong number presented as a right one. Callers either pass the
     /// catalogue's currency, or convert first through `CurrencySettings`.
+    ///
+    /// The number of decimals comes from `CurrencyDigits`, the table the
+    /// rounding reads, so a figure is printed at exactly the precision it was
+    /// rounded to, whatever the formatter's own default for that code.
     static func currency(_ amount: Double, code: String = PriceBook.currencyCode) -> String {
-        amount.formatted(.currency(code: code))
+        amount.formatted(
+            .currency(code: code)
+                .precision(.fractionLength(CurrencyDigits.minorUnits(for: code)))
+        )
     }
 
     /// Whole kilocalories, grouped for the locale, e.g. `"1,842 kcal"`. The

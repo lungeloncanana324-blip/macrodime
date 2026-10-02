@@ -160,4 +160,153 @@ final class MoneyTests: XCTestCase {
         XCTAssertTrue(PriceBook.rateDisclaimer.contains("US"))
         XCTAssertTrue(PriceBook.rateDisclaimer.lowercased().contains("estimate"))
     }
+
+    // MARK: Totals that add up (gap 22)
+    //
+    // A total over lines must equal the lines as shown. Twin of the same
+    // section in MoneyTest.kt.
+
+    private func meal(_ costs: Double...) throws -> MealItem {
+        let food = try XCTUnwrap(FoodCatalog.all.first)
+        return MealItem(name: "Test", slot: .breakfast, portions: costs.map { Portion(food: food.withCost($0)) })
+    }
+
+    /// The bug from the first emulator screenshots: lines of $0.22, $0.57 and
+    /// $0.27 under a $1.05 header, because the header summed unrounded costs.
+    func testAMealHeaderEqualsTheColumnUnderIt() throws {
+        let usd = CurrencySettings.usd
+        let breakfast = try meal(0.215, 0.565, 0.265)
+
+        XCTAssertEqual(breakfast.portions.map { usd.shown($0.cost) }, [0.22, 0.57, 0.27])
+        XCTAssertEqual(usd.shownCost(of: breakfast), 1.06, accuracy: 1e-9)
+        XCTAssertEqual(usd.formatTotal(breakfast.portions.map(\.cost)), DisplayFormat.currency(1.06, code: "USD"))
+    }
+
+    func testADayEqualsTheSumOfItsMealHeaders() throws {
+        let usd = CurrencySettings.usd
+        let day = try [meal(0.215, 0.565), meal(0.265, 1.005), meal(2.345)]
+        XCTAssertEqual(usd.shownCost(of: day), day.reduce(0) { $0 + usd.shownCost(of: $1) }, accuracy: 1e-9)
+    }
+
+    /// Rounding in USD first would not have been enough: a converted column
+    /// rounds again. At R18.50 the lines show R4.07, R10.55 and R5.00, which
+    /// add to R19.62; converting the dollar total would have said R19.61.
+    func testAConvertedColumnAddsUpInTheShownCurrency() {
+        let rand = CurrencySettings(displayCode: "ZAR", unitsPerUSD: 18.5)
+        let lines = [0.22, 0.57, 0.27]
+
+        XCTAssertEqual(lines.map { rand.shown($0) }, [4.07, 10.55, 5.0])
+        XCTAssertEqual(rand.shownTotal(lines), 19.62, accuracy: 1e-9)
+        XCTAssertEqual(rand.formatTotal(lines), DisplayFormat.currency(19.62, code: "ZAR"))
+    }
+
+    /// Every amount from $0.000 to $3.000 in tenths of a cent rounds as a
+    /// person would, halves up.
+    func testHalfCentsRoundUpAsAPersonWouldWorkItOut() {
+        for k in 0...3_000 {
+            let expected = Double((k + 5) / 10) / 100
+            XCTAssertEqual(CurrencySettings.usd.shown(Double(k) / 1_000), expected, "\(Double(k) / 1_000)")
+        }
+        // Held in binary as 0.28499999..., which a plain rounding sends down.
+        XCTAssertEqual(CurrencySettings.usd.shown(0.19 * 1.5), 0.29)
+    }
+
+    func testYenRoundsToWholeYenAndTheColumnStillAddsUp() {
+        let yen = CurrencySettings(displayCode: "JPY", unitsPerUSD: 150)
+        XCTAssertEqual(yen.minorUnits, 0)
+        XCTAssertEqual(yen.shown(0.333), 50)
+        // Three lines of 0.45 yen each show as nothing, so the total is
+        // nothing too, rather than the 1 yen their unrounded sum would print.
+        XCTAssertEqual(yen.shownTotal([0.003, 0.003, 0.003]), 0)
+    }
+
+    func testDinarKeepsThreeDecimalsInRoundingAndPrinting() {
+        XCTAssertEqual(CurrencyDigits.minorUnits(for: "KWD"), 3)
+        XCTAssertEqual(CurrencyDigits.minorUnits(for: " kwd "), 3)
+        XCTAssertEqual(CurrencyDigits.minorUnits(for: "ZAR"), 2)
+        XCTAssertEqual(CurrencyDigits.minorUnits(for: "not a code"), 2)
+        XCTAssertEqual(CurrencySettings(displayCode: "KWD", unitsPerUSD: 0.31).shown(0.005), 0.002, accuracy: 1e-12)
+    }
+
+    /// Two thousand random columns in five currencies, checked in whole
+    /// smallest units: every line shown is a whole number of them, and the
+    /// total shown is exactly their sum.
+    func testRandomColumnsAlwaysAddUp() {
+        var random = SplitMix64(seed: 22)
+        let currencies = [
+            CurrencySettings.usd,
+            CurrencySettings(displayCode: "ZAR", unitsPerUSD: 18.5),
+            CurrencySettings(displayCode: "GBP", unitsPerUSD: 0.79),
+            CurrencySettings(displayCode: "JPY", unitsPerUSD: 151.3),
+            CurrencySettings(displayCode: "KWD", unitsPerUSD: 0.307)
+        ]
+        for _ in 0..<2_000 {
+            let lines = (0..<Int.random(in: 1...7, using: &random)).map { _ in
+                Double.random(in: 0..<6, using: &random)
+            }
+            for settings in currencies {
+                let scale = pow(10.0, Double(settings.minorUnits))
+                var units = 0
+                for line in lines {
+                    let scaled = settings.shown(line) * scale
+                    XCTAssertEqual(scaled, scaled.rounded(), accuracy: 1e-6, "a shown line is whole \(settings.shownCode) units")
+                    units += Int(scaled.rounded())
+                }
+                XCTAssertEqual(Int((settings.shownTotal(lines) * scale).rounded()), units, "\(lines) in \(settings.shownCode)")
+                XCTAssertEqual(
+                    settings.formatTotal(lines),
+                    DisplayFormat.currency(Double(units) / scale, code: settings.shownCode)
+                )
+            }
+        }
+    }
+
+    /// A whole-meal swap is a chain of single swaps, and the review lists each
+    /// step's saving under a title with the total. Each step is the drop in
+    /// the shown cost, so the steps add up to the title exactly, in any
+    /// currency.
+    func testSwapStepsAddUpToTheSavingInTheTitle() throws {
+        let engine = BudgetFoodEngine(catalog: FoodCatalog.all)
+        let dinner = MealItem(
+            name: "Salmon dinner",
+            slot: .dinner,
+            portions: try ["salmon-fillet", "white-rice", "fresh-broccoli", "olive-oil"].map {
+                Portion(food: try XCTUnwrap(FoodCatalog.food(id: $0)))
+            }
+        )
+        let swap = try XCTUnwrap(engine.bestSwap(for: dinner))
+        XCTAssertFalse(swap.portionSwaps.isEmpty)
+
+        for prices in [CurrencySettings.usd, CurrencySettings(displayCode: "ZAR", unitsPerUSD: 18.5)] {
+            // The review's premise: the last step's meal is the swapped meal.
+            let last = try XCTUnwrap(swap.portionSwaps.last)
+            XCTAssertEqual(prices.shownCost(of: swap.swapped), prices.shownCost(of: last.resultingMeal), accuracy: 1e-9)
+
+            let steps = swap.shownStepSavings(in: prices)
+            XCTAssertEqual(steps.count, swap.portionSwaps.count)
+            XCTAssertEqual(steps.reduce(0, +), swap.shownSaving(in: prices), accuracy: 1e-9)
+            XCTAssertEqual(
+                swap.shownSaving(in: prices),
+                prices.shownCost(of: swap.original) - prices.shownCost(of: swap.swapped),
+                accuracy: 1e-9
+            )
+            XCTAssertGreaterThan(swap.shownSaving(in: prices), 0, "a swap the engine offers must show a saving")
+        }
+    }
+}
+
+/// A seeded generator, so the random column test checks the same columns on
+/// every run and on every platform.
+private struct SplitMix64: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) { state = seed }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
 }

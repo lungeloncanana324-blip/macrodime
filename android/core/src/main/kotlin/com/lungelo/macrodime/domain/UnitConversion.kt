@@ -77,13 +77,15 @@ object DisplayFormat {
         } catch (_: IllegalArgumentException) {
             // A code the platform does not know, from a damaged store: say the
             // code rather than guess a symbol.
-            return "$code ${number(amount, decimals = 2, locale = locale)}"
+            return "$code ${number(amount, decimals = CurrencyDigits.minorUnits(code), locale = locale)}"
         }
         val format = NumberFormat.getCurrencyInstance(locale)
         format.currency = currency
         // Setting the currency does not move the decimal places with it: yen
-        // has none, dinar has three.
-        val digits = currency.defaultFractionDigits.coerceAtLeast(0)
+        // has none, dinar has three. The digits come from CurrencyDigits, the
+        // same table the rounding reads, so a figure is printed at exactly the
+        // precision it was rounded to.
+        val digits = CurrencyDigits.minorUnits(code)
         format.minimumFractionDigits = digits
         format.maximumFractionDigits = digits
         return format.format(amount)
