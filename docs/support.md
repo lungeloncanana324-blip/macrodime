@@ -7,7 +7,7 @@ around what you can spend and what you will actually eat.
 ## Getting help
 
 Open an issue at
-https://github.com/lungeloncanana324-blip/macrodime/issues
+<https://github.com/lungeloncanana324-blip/macrodime/issues>
 
 Include your phone model, your iOS or Android version, and what you expected to happen
 against what did. Please do **not** include body measurements or photos in a
@@ -48,8 +48,8 @@ refreshed with app updates; MacroDime never goes online to look up a price.
 
 **Can I get a refund?**
 MacroDime is free. Purchases through the App Store are handled by Apple
-(https://reportaproblem.apple.com) and purchases through Google Play by Google
-(https://support.google.com/googleplay/answer/2479637).
+(<https://reportaproblem.apple.com>) and purchases through Google Play by Google
+(<https://support.google.com/googleplay/answer/2479637>).
 
 ## Subscriptions
 

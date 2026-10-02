@@ -74,4 +74,4 @@ is published at this address.
 ## Contact
 
 Questions about this policy: open an issue at
-https://github.com/lungeloncanana324-blip/macrodime/issues
+<https://github.com/lungeloncanana324-blip/macrodime/issues>
