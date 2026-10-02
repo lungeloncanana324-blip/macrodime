@@ -23,7 +23,7 @@ build and sign it is in `android/README.md`; every Play Console answer is in
 | P1 | **12 testers for 14 days** | New personal accounts must run a closed test with at least 12 testers opted in for 14 consecutive days before production access. The critical path: recruit them first | Lungelo | 14 days minimum, then up to a week of review |
 | P2 | **Upload key** | Done 2026-10-03: `android/macrodime-upload.jks` with its password in `android/keystore.properties`, both git-ignored. Back both up outside the repository. The first signed bundle (versionCode 1) is built; the next upload needs `-PversionCode=2` | Lungelo, back-up only | 5 min |
 | P3 | **First run on a real phone** | Upload the signed bundle to the internal testing track and install it from the Play link (steps in `docs/play-store-listing.md`), or sideload `android/build/MacroDime-test.apk`. The app has launched on an emulator, never on hardware | Lungelo | 30 min |
-| P4 | **Privacy policy URL live** | Same as gap 2 below: switch on GitHub Pages. The policy now covers Android. Checked 2026-10-03: the site, the policy and the support page all return 404, so Pages is still off | Lungelo | 10 min |
+| P4 | **Privacy policy URL live** | Done 2026-10-03: `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` returns the policy. Use it in Play Console's store listing and in App content, Privacy policy | done | 0 |
 | P5 | **App content declarations** | Data safety, health apps, target audience 18+, content rating, ads, financial features: answers written in `docs/play-store-listing.md` | Lungelo | 45 min |
 | P6 | **Public contact email** | Play shows it on the listing | Lungelo | 5 min |
 | P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
@@ -99,8 +99,8 @@ families) is the pattern if it needs tightening.
 | # | Gap | What it needs | Who | Cost |
 | --- | --- | --- | --- | --- |
 | 1 | **Apple Developer Program** | Enrolment with legal name, tax and banking details | Lungelo | $99/yr, 1 to 3 days |
-| 2 | **Privacy policy URL** | Text is written and now publishable: `docs/privacy-policy.md` renders as a page once Pages is on. Three clicks, written up in `docs/index.md` | Lungelo | 10 min |
-| 3 | **Support URL** | `docs/support.md` does the same job, including the questions a reviewer would ask and the refund route | Lungelo | done, host it |
+| 2 | **Privacy policy URL** | Done 2026-10-03: live at `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` (GitHub Pages, branch `master`, folder `/docs`). The site publishes only the home, policy and support pages; `docs/_config.yml` excludes the working notes | done | 0 |
+| 3 | **Support URL** | Done 2026-10-03: live at `https://lungeloncanana324-blip.github.io/macrodime/support.html`, including the questions a reviewer would ask and the refund route | done | 0 |
 | 4 | **Screenshots** | Done in principle: run `36270743631` of `screenshots.yml` launched the app on all four tabs and captured them at 1320x2868 (iPhone 16 Pro Max, the 6.9 inch size). Check them against the listing copy, and use a run from after the quantity fix (gap 20) | Lungelo | 10 min |
 | 5 | **A TestFlight build that runs** | `codemagic.yaml` has the signed workflow ready. The app has now launched in a simulator, so this is the first run on real hardware rather than the first run at all | Lungelo and CI | half a day |
 | 6 | **App Store Connect record** | Bundle id `com.lungelo.macrodime`, name, category (Health and Fitness), age rating questionnaire | Lungelo | 45 min |

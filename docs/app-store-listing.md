@@ -88,8 +88,8 @@ macro,budget,meal plan,protein,calorie,grocery,BMI,fat loss,cheap,high protein,n
 | Privacy policy URL | `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` |
 | Marketing URL | optional; leave blank or point at the repo README |
 
-Both URLs come from the `docs/` folder, published through GitHub Pages. The
-three-step setup is written at the top of `docs/index.md`.
+Both URLs are live since 2026-10-03: GitHub Pages serves the `docs/` folder from
+`master`, and `docs/_config.yml` lists what the site publishes.
 
 ## Age rating questionnaire
 
