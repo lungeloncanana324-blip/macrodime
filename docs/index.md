@@ -1,27 +1,13 @@
 # MacroDime
 
-An iPhone and Android app that pairs BMI and body-composition science with
-realistic food budgeting.
+Nutrition targets that fit what you can actually spend.
 
-This folder is published as a website, because App Store Connect and Google Play
-Console both require a live privacy policy URL, and App Store Connect a support
-URL too. Both live here:
+MacroDime works out your calorie and protein targets from published equations,
+then plans your meals around a daily food allowance you set. When a meal costs
+more than it needs to, it suggests cheaper ingredients that keep your macros
+within 10%, and it builds the week's grocery list from what you planned.
+
+Everything stays on your phone: no account, no ads and no analytics.
 
 - [Privacy policy](privacy-policy.html)
 - [Support](support.html)
-- Source code and documentation: https://github.com/lungeloncanana324-blip/macrodime
-
-## To publish this with GitHub Pages
-
-1. Repository settings, then Pages.
-2. Source: deploy from a branch. Branch: `master`. Folder: `/docs`.
-3. Save. The site appears at
-   `https://lungeloncanana324-blip.github.io/macrodime/` after a minute or two.
-
-Then use these values in App Store Connect and in Play Console (Store listing,
-and App content, Privacy policy):
-
-| Field | URL |
-| --- | --- |
-| Privacy Policy URL | `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` |
-| Support URL | `https://lungeloncanana324-blip.github.io/macrodime/support.html` |

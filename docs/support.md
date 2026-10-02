@@ -4,8 +4,6 @@ MacroDime is a nutrition and food budgeting app for iPhone and Android: it works
 energy and protein targets from published equations, then builds a meal plan
 around what you can spend and what you will actually eat.
 
-App Store Connect and Google Play both ask for a live support page, which is what this is.
-
 ## Getting help
 
 Open an issue at

@@ -75,13 +75,3 @@ is published at this address.
 
 Questions about this policy: open an issue at
 https://github.com/lungeloncanana324-blip/macrodime/issues
-
-## Notes for whoever hosts this
-
-This file is the policy text, not a hosted page. Apple requires a live URL in App
-Store Connect, and Google Play requires one in Play Console for every app,
-including one that collects no data. The cheapest way to satisfy that is to publish this file through
-GitHub Pages on the repo it already lives in: Settings, Pages, deploy from the
-`master` branch, and use the `docs/` folder. The resulting URL looks like
-`https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html`, after
-renaming this file to `.html` or adding a Markdown-capable theme.

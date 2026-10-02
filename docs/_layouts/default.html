@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page.title | default: site.title }}</title>
+    <meta name="description" content="{{ page.description | default: site.description }}">
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1><a href="{{ '/' | relative_url }}">{{ site.title }}</a></h1>
+        <p>{{ site.description }}</p>
+        <p>
+          <a href="{{ '/privacy-policy.html' | relative_url }}">Privacy policy</a><br>
+          <a href="{{ '/support.html' | relative_url }}">Support</a>
+        </p>
+      </header>
+      <section>
+        {{ content }}
+      </section>
+      <footer>
+        <p><small>MacroDime keeps everything you enter on your phone.</small></p>
+      </footer>
+    </div>
+  </body>
+</html>

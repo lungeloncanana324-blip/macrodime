@@ -1,12 +1,26 @@
 # Jekyll configuration for GitHub Pages.
 #
-# Every Markdown file in this folder becomes a page, which is how the two URLs
-# App Store Connect requires are served without a separate site:
+# This folder is published at https://lungeloncanana324-blip.github.io/macrodime/
+# (Settings, Pages, deploy from branch `master`, folder `/docs`), because App
+# Store Connect and Play Console both require a live privacy policy URL, and App
+# Store Connect a support URL too:
 #   /privacy-policy.html
 #   /support.html
 #
-# A built-in Pages theme keeps it readable without any HTML of ours to maintain.
+# Every Markdown file here becomes a page unless it is excluded below. The rest
+# of this folder is the project's working notes, which belong in the repository
+# rather than on the app's public website, so they are left out.
+#
+# The theme supplies the stylesheet; _layouts/default.html replaces its page
+# layout, whose footer carried a dash and links aimed at developers.
 
 title: MacroDime
 description: Nutrition targets that fit what you can actually spend.
 theme: jekyll-theme-minimal
+
+exclude:
+  - MONETISATION.md
+  - SHIPPING-GAPS.md
+  - TESTING.md
+  - app-store-listing.md
+  - play-store-listing.md
