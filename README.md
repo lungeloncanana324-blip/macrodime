@@ -283,16 +283,18 @@ Then ⌘U to run the tests.
 ### Status
 
 **The pure layer compiles and its tests pass.** Built with Swift 6.2 on Linux
-(WSL Ubuntu 24.04), in Swift 5 language mode to match Xcode 15 / iOS 17:
+(WSL Ubuntu 24.04) and on CI's macOS runner, in Swift 5 language mode to match
+Xcode 15 / iOS 17:
 
 ```
 swift build    Build complete!              0 errors, 0 warnings
-swift test     Executed 101 tests, with 0 failures
+swift test     Executed 136 tests, with 0 failures
 ```
 
-Every figure in this README is output from that compiled binary. The 101 tests
+Every figure in this README is output from that compiled binary. The 136 tests
 cover the body science, the swap engine, the vegetable swap groups, the currency
-and conversion rules, the dietary filter and the plan audit. Several of them were
+and conversion rules, the dietary filter, the plan audit and the catalogue sync
+that carries price refreshes to existing installs. Several of them were
 written to break the system rather than to confirm it: the unconstrained profile
 that filtered food, and the four failures it produced, are the clearest example.
 
@@ -301,16 +303,16 @@ builds it on a hosted macOS runner (`.github/workflows/ios.yml`):
 
 ```
 xcodebuild build   -scheme MacroDime                 success
-xcodebuild test    iPhone 16 simulator, 101 tests     success
+xcodebuild test    iPhone 16 simulator, 136 tests     success
 ```
 
-**What compiling does not prove.** The app has never been *launched*. SwiftData
-resolves its schema at runtime, so a bad model graph surfaces on first launch
-rather than at build time, and `MacroDimeApp.init` deliberately `fatalError`s if
-the container will not open. Onboarding, the catalogue seeder, the demo seeder and
-the first save are all unexercised. `.github/workflows/screenshots.yml` exists to
-close that gap: it boots a simulator, launches the app with `-MacroDimeScreenshots`
-and captures every tab, which doubles as the first real end-to-end test.
+**What compiling does not prove.** SwiftData resolves its schema at runtime, so a
+bad model graph surfaces on first launch rather than at build time, and
+`MacroDimeApp.init` deliberately `fatalError`s if the container will not open.
+`.github/workflows/screenshots.yml` closes that part: since 2026-09-26 it boots a
+simulator, launches the app with `-MacroDimeScreenshots`, and captures every tab
+with the store open and demo data seeded. What it does not do is tap anything:
+onboarding end to end, a swap and the food picker are tried by hand in Appetize.
 
 **Shipping readiness is tracked in [`docs/SHIPPING-GAPS.md`](docs/SHIPPING-GAPS.md)**,
 which lists what blocks a submission, what is unverified, and what it costs. The
