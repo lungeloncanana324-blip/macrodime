@@ -35,7 +35,7 @@ app/    Room database, view models, Compose UI, the Android manifest
 From `android/`:
 
 ```
-./gradlew :core:test                 # 137 engine tests, plain JVM, seconds
+./gradlew :core:test                 # 145 engine tests, plain JVM, seconds
 ./gradlew :app:testDebugUnitTest     # database and full-app UI tests (Robolectric)
 ./gradlew :app:lintRelease           # lint is an error, not a report
 ./gradlew :app:verifyReleasePermissions

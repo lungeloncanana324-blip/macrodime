@@ -288,10 +288,10 @@ Xcode 15 / iOS 17:
 
 ```
 swift build    Build complete!              0 errors, 0 warnings
-swift test     Executed 136 tests, with 0 failures
+swift test     Executed 144 tests, with 0 failures
 ```
 
-Every figure in this README is output from that compiled binary. The 136 tests
+Every figure in this README is output from that compiled binary. The 144 tests
 cover the body science, the swap engine, the vegetable swap groups, the currency
 and conversion rules, the dietary filter, the plan audit and the catalogue sync
 that carries price refreshes to existing installs. Several of them were
@@ -303,7 +303,7 @@ builds it on a hosted macOS runner (`.github/workflows/ios.yml`):
 
 ```
 xcodebuild build   -scheme MacroDime                 success
-xcodebuild test    iPhone 16 simulator, 136 tests     success
+xcodebuild test    iPhone 16 simulator, 144 tests     success
 ```
 
 **What compiling does not prove.** SwiftData resolves its schema at runtime, so a
