@@ -47,6 +47,7 @@ let package = Package(
                 "Views",        // SwiftUI
                 "ViewModels",   // @Observable + SwiftData ModelContext
                 "Persistence",  // SwiftData @Model
+                "Commerce",     // StoreKit 2
                 "Resources"     // Asset catalogue: Xcode territory, not SwiftPM's
             ],
             sources: [

@@ -19,9 +19,12 @@ struct LogMeasurementSheet: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(SubscriptionStore.self) private var subscriptions
 
     let profile: UserProfile
 
+    /// Measurements are free, because targets follow weight. Photos are Pro.
+    @State private var isShowingPaywall = false
     @State private var waistText: String = ""
     @State private var hipText: String = ""
     @State private var weightText: String = ""
@@ -49,12 +52,16 @@ struct LogMeasurementSheet: View {
                 }
 
                 Section("Progress photo") {
-                    PhotosPicker(selection: $photoSelection, matching: .images, photoLibrary: .shared()) {
-                        HStack {
-                            Label(photoData == nil ? "Add photo" : "Replace photo", systemImage: "camera.fill")
-                            Spacer()
-                            if isLoadingPhoto { ProgressView() }
+                    if subscriptions.isPro {
+                        PhotosPicker(selection: $photoSelection, matching: .images, photoLibrary: .shared()) {
+                            HStack {
+                                Label(photoData == nil ? "Add photo" : "Replace photo", systemImage: "camera.fill")
+                                Spacer()
+                                if isLoadingPhoto { ProgressView() }
+                            }
                         }
+                    } else {
+                        Button("Add photos with Pro", systemImage: "star.circle") { isShowingPaywall = true }
                     }
 
                     if let photoData, let image = UIImage(data: photoData) {
@@ -104,6 +111,11 @@ struct LogMeasurementSheet: View {
                 Button("OK", role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "")
+            }
+            // Presented from this sheet, not over it: the paywall opens on top
+            // and the measurements typed so far are still here afterwards.
+            .fullScreenCover(isPresented: $isShowingPaywall) {
+                PaywallView(profile: profile, reason: .progressPhotos, savedSoFarUSD: 0) { isShowingPaywall = false }
             }
         }
     }

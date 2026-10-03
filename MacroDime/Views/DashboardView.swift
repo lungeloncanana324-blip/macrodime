@@ -19,7 +19,11 @@ struct DashboardView: View {
 
 
     @Environment(\.modelContext) private var context
+    @Environment(SubscriptionStore.self) private var subscriptions
     @Query private var profiles: [UserProfile]
+
+    /// Opens the paywall, for a free account's upgrade card.
+    var onUpgrade: (PaywallReason) -> Void = { _ in }
 
     @State private var model = MealPlannerViewModel()
     @State private var isShowingMeasurementSheet = false
@@ -31,10 +35,18 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 16) {
+                    if EntitlementPolicy.showsTrialReminder(subscriptions.entitlement) {
+                        TrialReminderCard()
+                    }
                     macroCard
-                    budgetCard
-                    planGapsCard
-                    swapPreviewCard
+                    if subscriptions.isPro {
+                        budgetCard
+                        planGapsCard
+                        swapPreviewCard
+                    } else if let profile {
+                        // The targets stay free. What they would buy, planned, is Pro.
+                        UpgradeCard(profile: profile) { onUpgrade(.planner) }
+                    }
                     progressCard
                     powerhousesCard
                 }

@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import StoreKit
 
 @main
 struct MacroDimeApp: App {
@@ -48,10 +49,18 @@ struct MacroDimeApp: App {
         DemoData.installIfRequested(context: container.mainContext)
     }
 
+    /// MacroDime Pro. A subscriber in a screenshot run, so the store's
+    /// screenshots show the planner rather than a lock.
+    @State private var subscriptions = DemoData.isRequested
+        ? SubscriptionStore(preview: Entitlement(isPro: true, plan: .annual))
+        : SubscriptionStore()
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .brandAccent()
+                .environment(subscriptions)
+                .task { await subscriptions.start() }
         }
         .modelContainer(container)
     }
@@ -64,7 +73,12 @@ struct MacroDimeApp: App {
 struct RootView: View {
 
     @Environment(\.modelContext) private var context
+    @Environment(SubscriptionStore.self) private var subscriptions
     @Query private var profiles: [UserProfile]
+
+    /// Set when onboarding completes in this session: the paywall then opens
+    /// on the targets just made, unless the store already knows of Pro.
+    @State private var justOnboarded = false
 
     private var profile: UserProfile? { profiles.first }
 
@@ -75,6 +89,17 @@ struct RootView: View {
             } else {
                 OnboardingView(existingProfile: profile)
                     .transition(.opacity)
+            }
+        }
+        .onChange(of: profile?.hasCompletedOnboarding ?? false) { wasDone, isDone in
+            if !wasDone && isDone { justOnboarded = true }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { justOnboarded && !subscriptions.isPro },
+            set: { if !$0 { justOnboarded = false } }
+        )) {
+            if let profile {
+                PaywallView(profile: profile, reason: .afterOnboarding, savedSoFarUSD: 0) { justOnboarded = false }
             }
         }
         // Money is shown in one currency at a time, and the profile decides which.
@@ -93,28 +118,52 @@ struct MainTabView: View {
 
     let profile: UserProfile
 
+    @Environment(SubscriptionStore.self) private var subscriptions
+    /// Every saving swaps have made: what a lapsed trial is shown first.
+    @Query private var plannedMeals: [PlannedMeal]
+
     /// Which tab is showing. Seeded from the launch arguments so a screenshot
     /// run can open on a specific tab: a simulator cannot be tapped from a
     /// script, and the store needs a shot of each screen.
     @State private var selection: Int = DemoData.initialTab
+    @State private var paywallReason: PaywallReason?
 
     var body: some View {
         TabView(selection: $selection) {
-            DashboardView()
+            DashboardView(onUpgrade: { paywallReason = $0 })
                 .tabItem { Label("Today", systemImage: "chart.pie.fill") }
                 .tag(0)
 
-            MealPlannerView()
-                .tabItem { Label("Plan", systemImage: "fork.knife") }
-                .tag(1)
+            Group {
+                if subscriptions.isPro {
+                    MealPlannerView()
+                } else {
+                    ProLockedView(title: "Meal Plan", reason: .planner, profile: profile) { paywallReason = .planner }
+                }
+            }
+            .tabItem { Label("Plan", systemImage: "fork.knife") }
+            .tag(1)
 
-            GroceryListView()
-                .tabItem { Label("Groceries", systemImage: "cart.fill") }
-                .tag(2)
+            Group {
+                if subscriptions.isPro {
+                    GroceryListView()
+                } else {
+                    ProLockedView(title: "Groceries", reason: .groceries, profile: profile) { paywallReason = .groceries }
+                }
+            }
+            .tabItem { Label("Groceries", systemImage: "cart.fill") }
+            .tag(2)
 
-            SettingsView(profile: profile)
+            SettingsView(profile: profile, onSeePlans: { paywallReason = .settings })
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                 .tag(3)
+        }
+        .fullScreenCover(item: $paywallReason) { reason in
+            PaywallView(
+                profile: profile,
+                reason: reason,
+                savedSoFarUSD: plannedMeals.reduce(0) { $0 + $1.swapSavings }
+            ) { paywallReason = nil }
         }
     }
 }
@@ -129,9 +178,48 @@ struct SettingsView: View {
 
 
     @Environment(\.modelContext) private var context
+    @Environment(SubscriptionStore.self) private var subscriptions
     let profile: UserProfile
+    var onSeePlans: () -> Void = {}
 
     @State private var isEditingProfile = false
+    @State private var isManagingSubscription = false
+
+    // MARK: MacroDime Pro
+
+    /// Pro's status and the ways in and out of it. A subscription is managed
+    /// in Apple's own sheet: the app cannot change one itself.
+    private var proSection: some View {
+        let entitlement = subscriptions.entitlement
+        let planName: String = {
+            guard entitlement.isPro else { return "Free" }
+            guard let plan = entitlement.plan else { return "Pro" }
+            return "Pro, \(plan.title.lowercased())"
+        }()
+        return Section {
+            LabeledContent("Plan", value: planName)
+            if entitlement.isPro, let ends = entitlement.trialEndsAt, ends > .now {
+                LabeledContent("Free trial ends", value: ends.formatted(date: .abbreviated, time: .omitted))
+            }
+            if entitlement.isPro && !entitlement.willRenew {
+                LabeledContent("Renewal", value: "Cancelled")
+            }
+            if subscriptions.isPro {
+                Button("Manage subscription", systemImage: "creditcard") { isManagingSubscription = true }
+            } else {
+                Button("See Pro plans", systemImage: "star.circle", action: onSeePlans)
+                Button("Restore purchases", systemImage: "arrow.clockwise") {
+                    Task { await subscriptions.restore() }
+                }
+            }
+        } header: {
+            Text("MacroDime Pro")
+        } footer: {
+            Text(subscriptions.message ?? (subscriptions.isPro
+                ? "Payments, renewal and cancellation are handled by the App Store."
+                : Paywall.upgradeDetail))
+        }
+    }
 
     // MARK: Food rules
 
@@ -263,6 +351,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                proSection
+
                 Section("Your plan") {
                     LabeledContent("Goal", value: profile.goal.displayName)
                     LabeledContent("Activity", value: profile.activity.displayName)
@@ -314,6 +404,7 @@ struct SettingsView: View {
                     isEditingProfile = false
                 }
             }
+            .manageSubscriptionsSheet(isPresented: $isManagingSubscription)
         }
     }
 }
