@@ -1,8 +1,89 @@
 # Monetisation: the decision, and the plan for the build that adds it
 
-Decided 2026-09-20.
+Decided 2026-09-20. **Revised 2026-10-03**: the public launch carries the
+subscription, with a 14-day free trial on the yearly plan. The revision comes
+first; the original reasoning follows it, because most of it still holds.
 
-## The decision
+## Revised 2026-10-03: launch with Pro and a 14-day trial
+
+The original decision was "launch free" for one main reason: the app had
+never run, and the first paying users should not be its first testers. That
+reason is answered before the public launch now, because Play's closed test
+(12 testers for 14 days) comes first. And adding a paywall after launch has a
+cost the original decision did not weigh: people who had the planner free and
+then lose it leave the one-star reviews. So the subscription goes into the
+build that launches, and the closed test is where it gets exercised.
+
+**What is sold.** One subscription, MacroDime Pro, two ways:
+
+| Plan | Price to start with | Trial | Role |
+| --- | --- | --- | --- |
+| Yearly | $29.99 a year | 14 days free | The headline offer, chosen by default on the paywall |
+| Monthly | $5.99 a month | None | For people who will not commit to a year; pays from day one |
+
+The prices are a starting point to test, not a benchmark: no verified data
+was found for this category's price points. The users are budget-conscious by
+definition, so they start low, and the yearly plan comes to under half the
+monthly price over a year. Set them in Play Console (and App Store Connect);
+the app reads every figure from the store, so nothing in the code changes
+when they do.
+
+**Why the trial is 14 days, and only on the yearly plan.** RevenueCat's data
+from 17,000+ apps (August 2025 to July 2026, published 28 September 2026):
+
+| Yearly plans | 4 days or less | 5 to 9 days | 10 to 16 days |
+| --- | --- | --- | --- |
+| Trial becomes paid | 24% | 33% | 43% |
+| Renews after the first year | 18.3% | 25.3% | 36.4% |
+
+On monthly plans the pattern reverses for Health and Fitness (a 5 to 9 day
+trial converts 46.8%, a 10 to 16 day one 40.4%), so the trial lives on the
+yearly plan, where it also steers people who want to try first towards the
+plan that keeps them. And 14 days fits this app: its value is a planned week,
+a shop from the list and the swap savings, which a 3-day trial ends before.
+Sources: [free trial length](https://www.revenuecat.com/blog/growth/free-trial-length),
+[2026 benchmarks](https://www.revenuecat.com/blog/growth/subscription-app-trends-benchmarks-2026).
+
+**What is free and what is Pro** is unchanged from the table under "What
+stays free" below, with one addition: logging weight and waist stays free,
+because targets follow weight; attaching a progress photo is Pro.
+
+**How the app sells it** (Android, built and tested 2026-10-03):
+
+- The paywall opens straight after onboarding, on the targets and budget
+  the person just set. 55% of trial cancellations happen on the day the trial
+  starts, so the first moment carries most of the outcome.
+- The yearly plan is selected by default and shows its monthly equivalent and
+  its saving, both worked out from the store's own prices.
+- A trial timeline says what happens on day 1, on day 14 and after, including
+  when to cancel. The full terms sit under the button. Both stores require
+  them, and a surprise charge becomes a refund and a one-star review.
+- The button stays on screen while the page scrolls; "Not now" is always there.
+- A trial is promised only when the store offers this person one: Play
+  leaves out offers someone is not eligible for, and the copy follows.
+- Locked tabs describe the feature in the person's own numbers, with a way in,
+  never a bare lock. Today keeps the targets and shows what Pro would plan.
+- In the last two days of a trial, Today says when it ends and what happens
+  next. Someone who has already cancelled is told they will not be charged.
+- After a trial lapses, the paywall leads with what their swaps saved them.
+
+Hard paywalls convert about five times better than freemium by day 35 (10.7%
+against 2.1%, same 2026 report). This is close to one: the targets and the
+safety information stay free, the planning is Pro.
+
+**Platform status.** Android: Google Play Billing 9.1.0, product `pro` with
+base plans `annual` (P1Y) and `monthly` (P1M), and on `annual` a free-trial
+offer (P2W or P14D). Every rule (which offer to sell, what a purchase means,
+how long Pro survives offline) is pure and tested in
+`android/core/.../domain/Subscription.kt`. The Play Console setup is in
+`docs/play-store-listing.md`. iOS: StoreKit 2, built 2026-10-03 to the same
+design (`MacroDime/Commerce/SubscriptionStore.swift`, `Views/PaywallView.swift`,
+copy and rules in `Domain/Subscription.swift` with `SubscriptionTests`), using
+the product ids in the plan below and the same trial on the yearly product.
+It can only be compiled by `ios.yml` and only exercised in TestFlight with a
+sandbox tester; App Store Connect setup is in `docs/app-store-listing.md`.
+
+## The decision (2026-09-20, superseded on when to charge)
 
 **MacroDime launches free, with no in-app purchases.** One auto-renewable
 subscription is added in a later build, implemented with Apple's own StoreKit 2

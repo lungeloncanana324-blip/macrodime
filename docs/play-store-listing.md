@@ -137,9 +137,29 @@ target audience answer above and by the app itself.
 
 Why "No" is true, not just claimed:
 
-- The app requests **no permissions**. Without `INTERNET` it cannot open a
-  network connection, and `verifyReleasePermissions` fails the build if any
-  library ever merges a permission in.
+- The app requests **no permission that reaches the network**. Without
+  `INTERNET` it cannot open a connection. Its only permission is
+  `com.android.vending.BILLING`, which lets it talk to the Play Store app on
+  the phone about MacroDime Pro, and `verifyReleasePermissions` fails the
+  build if any library ever merges in anything else. It caught one on
+  2026-10-03: Play Billing 9 brings Google's Data Transport library, which
+  uploads the billing library's own diagnostics and merges in `INTERNET` and
+  `ACCESS_NETWORK_STATE`. The app manifest removes both (see the comment in
+  `AndroidManifest.xml`): purchases still work because the Play Store app does
+  the networking, and Data Transport's refusal is caught on its own executor,
+  so its diagnostics are dropped rather than sent. Recheck when Play Billing is
+  upgraded.
+- **Subscriptions go through Google Play Billing.** Google takes the payment
+  under its own terms; the app never sees card or payment details. All it
+  receives is whether a subscription is active, which it keeps on the phone and
+  sends nowhere. Google's definition: "'Collect' means transmitting data from
+  your app off a user's device", and "user data accessed by your app that is
+  only processed locally on the user's device and not sent off device does not
+  need to be disclosed". This is a judgement on Google's wording, so the
+  cautious alternative is stated here too: declaring Financial info, Purchase
+  history (collected, not shared, for app functionality) is never wrong, and
+  costs only the "No data collected" label. Recheck the form's help text on
+  the day it is submitted.
 - Prices are compiled into the app; nothing is fetched.
 - Progress photos come through the system photo picker, which needs no storage
   permission, and are copied into the app's private storage.
@@ -161,9 +181,55 @@ reporting), the form must be updated before that build is released.
 First release. Macro targets from your body and goal, a daily meal plan priced against the allowance you set, low-cost swaps that keep your macros within 10%, and a grocery list built from the week you planned. Everything stays on your phone.
 ```
 
-## Pricing
+## Pricing and MacroDime Pro
 
-Free, with no in-app purchases, matching the iOS decision in
-`docs/MONETISATION.md`. A later subscription on Android would use Google Play
-Billing, which is required for digital features sold in a Play app, and would
-need the Data safety form and the privacy policy revisited.
+The app is **Free** in Play Console (a free app can never become paid, but it
+can sell subscriptions), and sells one subscription, MacroDime Pro, with a
+14-day free trial on the yearly plan. Why, and what is free and what is Pro:
+`docs/MONETISATION.md`.
+
+### Setting it up in Play Console, in this order
+
+1. **Payments profile.** Setup, Payments profile: link or create one, with
+   the bank account Google pays out to. Nothing can be sold until it exists.
+2. **Upload a build that contains Play Billing.** Play Console only allows
+   subscriptions to be created once an uploaded bundle declares the BILLING
+   permission. Version code 1 does not; the next bundle (version code 2 or
+   higher, `./gradlew :app:bundleRelease -PversionCode=2`) does. Upload it to
+   internal testing.
+3. **Create the subscription.** Monetize with Play, Products, Subscriptions,
+   Create subscription. The ids must match the app exactly:
+
+   | Field | Value |
+   | --- | --- |
+   | Product ID | `pro` |
+   | Name | MacroDime Pro |
+   | Base plan 1 | ID `annual`, auto-renewing, billing period 1 year, $29.99 |
+   | Base plan 2 | ID `monthly`, auto-renewing, billing period 1 month, $5.99 |
+
+   Set the local prices Play suggests, or round them by hand (South Africa,
+   for example). Activate both base plans.
+4. **Add the trial offer** to the `annual` base plan: Add offer, ID
+   `free-trial-14-days`, eligibility **New customer acquisition: never had
+   this subscription**, one phase: **Free trial, 2 weeks** (or 14 days).
+   Activate it. Do not add a trial to `monthly`: the app sells the monthly
+   plan without one, and ignores any offer it could not describe honestly.
+5. **License testers.** Setup, License testing: add your Gmail. Purchases by
+   license testers are never charged, and their subscriptions renew every few
+   minutes instead of every year, so the whole trial and renewal cycle can be
+   watched in an hour.
+
+The app reads every price, the trial's length and the eligibility from Play,
+so changing a price or the trial later needs no new build.
+
+### What to check on a phone, from the internal testing track
+
+| Do this | Expect |
+| --- | --- |
+| Finish onboarding | The paywall opens, quoting your own targets and budget, with Yearly selected and "Start my 14-day free trial" |
+| Tap Monthly | The trial disappears from the button, the timeline and the terms |
+| Start the trial | Google Play's own purchase sheet, showing the trial and the price after it; after confirming, the planner and grocery list open |
+| Settings | "Pro, yearly", the date the trial ends, Manage subscription |
+| Manage subscription | Opens Google Play's subscription page for MacroDime |
+| Cancel in Play, return to the app | Pro stays until the trial ends; Today's reminder (last two days) says you won't be charged |
+| Uninstall, reinstall, onboard again | No paywall: the store already knows the account has Pro |

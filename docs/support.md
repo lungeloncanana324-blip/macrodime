@@ -47,13 +47,29 @@ US averages, so your own store will differ. They are built into the app and
 refreshed with app updates; MacroDime never goes online to look up a price.
 
 **Can I get a refund?**
-MacroDime is free. Purchases through the App Store are handled by Apple
-(<https://reportaproblem.apple.com>) and purchases through Google Play by Google
-(<https://support.google.com/googleplay/answer/2479637>).
+MacroDime is free to download; MacroDime Pro is a subscription. Refunds are
+handled by the store you paid: Google Play
+(<https://support.google.com/googleplay/answer/2479637>) or Apple
+(<https://reportaproblem.apple.com>).
 
-## Subscriptions
+## MacroDime Pro
 
-MacroDime is free at launch and has no in-app purchases. A subscription is
-planned for a later version. If you buy it, cancelling is done in iOS (Settings,
-your Apple Account, Subscriptions) or in the Google Play app (your profile,
-Payments and subscriptions).
+Your targets, the health and safety information, measurements and deleting your
+data are free. MacroDime Pro adds the meal planner, cheaper swaps, the grocery
+list and progress photos. It is sold through Google Play, yearly or monthly, and
+the yearly plan starts with a 14-day free trial for anyone who has not had one.
+The price, and the terms, are shown in full before you start.
+
+**How do I cancel?** In the Google Play app: tap your profile, then Payments and
+subscriptions, then Subscriptions, then MacroDime. Cancel before a free trial
+ends and you are not charged. Pro keeps working until the end of what you have
+already paid for, or of the trial. MacroDime's own Settings, under MacroDime
+Pro, has a Manage subscription button that opens the same page.
+
+**I paid but the app still says Free.** Open Settings, MacroDime Pro, Restore
+purchases, while signed in to the Google account that paid. A payment Google
+Play has not confirmed yet (some cash and bank methods) unlocks Pro as soon as
+it is confirmed.
+
+**Will my subscription move to a new phone?** Yes. It belongs to your Google
+account, so signing in on the new phone is enough.

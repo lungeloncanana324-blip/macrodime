@@ -112,16 +112,56 @@ is the substantive protection behind the rating.
 | Data not linked to the user | None |
 
 This matches `MacroDime/Resources/PrivacyInfo.xcprivacy`, which declares no
-collected data types and no tracking domains. The app has no networking code.
+collected data types and no tracking domains. The app has no networking code of
+its own. MacroDime Pro is bought through StoreKit: Apple takes the payment, and
+the app only asks StoreKit on the device which subscription is active, so no
+purchase data is collected by the developer.
+
+## In-app purchase: MacroDime Pro
+
+Built in the app (`MacroDime/Commerce/SubscriptionStore.swift`), waiting for
+these App Store Connect steps, in order:
+
+1. **Paid Applications Agreement**, with banking and tax (a W-8BEN for a South
+   African individual). Nothing can be sold or sandbox-tested until it is active.
+2. **Subscription group** `MacroDime Pro`, with two auto-renewable
+   subscriptions whose product ids must match the code exactly:
+
+   | Product id | Duration | Price to start with |
+   | --- | --- | --- |
+   | `com.lungelo.macrodime.pro.annual` | 1 year | $29.99 |
+   | `com.lungelo.macrodime.pro.monthly` | 1 month | $5.99 |
+
+3. **Introductory offer** on the annual product only: Free trial, 2 weeks, for
+   new subscribers. The app shows the trial only when StoreKit says the person
+   is eligible, and sells a yearly product that renews other than yearly, or an
+   intro offer that is not a plain free trial, as nothing at all.
+4. **Review screenshot**: the paywall. Display names: "MacroDime Pro, yearly"
+   and "MacroDime Pro, monthly".
+5. **Sandbox tester** (Users and Access, Sandbox), then test from TestFlight.
+
+The paywall carries what guideline 3.1.2 asks: the title, length and price,
+the price after the trial, how to cancel, Restore, and working links to the
+Terms of Use (Apple's standard EULA) and the privacy policy. Why the trial is
+14 days and only on the yearly plan: `docs/MONETISATION.md`.
 
 ## App Review notes
 
 ```
 MacroDime has no account and no sign-in. Every feature works offline; the app
-makes no network requests at all.
+makes no network requests of its own. Subscriptions go through StoreKit.
 
-To see it populated rather than empty, add meals from the Plan tab using the
-catalogue picker, or run a low-cost swap on a meal you have built.
+MacroDime Pro is an auto-renewable subscription, yearly (with a 14-day free
+trial for new subscribers) or monthly. Free without it: onboarding, calorie and
+protein targets, the health and safety information, measurements, and
+deleting all data. Pro adds the meal planner, swaps, the grocery list and
+progress photos. The paywall appears after onboarding, can be dismissed with
+"Not now", and opens again from the Plan or Groceries tab or Settings, where
+Restore purchases also is. Please use a sandbox account to start the trial.
+
+To see it populated rather than empty, start the trial, then add meals from the
+Plan tab using the catalogue picker, or run a low-cost swap on a meal you have
+built.
 
 Health and safety: onboarding requires acknowledging a health disclaimer before
 the summary step can be completed, and the same text is available at Settings,
