@@ -43,6 +43,8 @@ class MacroDimeRepository(
 
     val foods: Flow<List<FoodItemEntity>> = dao.observeFoods()
 
+    val totalSwapSavings: Flow<Double> = dao.observeTotalSwapSavings()
+
     fun meals(day: LocalDate): Flow<List<MealItem>> = dao.observePlan(day.toEpochDay()).map { it.toMealItems() }
 
     fun measurements(profileId: String): Flow<List<BodyMeasurementEntity>> = dao.observeMeasurements(profileId)

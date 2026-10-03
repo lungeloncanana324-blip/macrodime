@@ -9,9 +9,7 @@
 
 package com.lungelo.macrodime.ui.settings
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +31,7 @@ import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.Policy
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Support
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -68,8 +67,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.lungelo.macrodime.BuildConfig
+import com.lungelo.macrodime.billing.StoreState
 import com.lungelo.macrodime.data.MacroDimeRepository
 import com.lungelo.macrodime.data.UserProfileEntity
 import com.lungelo.macrodime.data.activity
@@ -81,7 +80,9 @@ import com.lungelo.macrodime.data.prescription
 import com.lungelo.macrodime.domain.CurrencySettings
 import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.Money
+import com.lungelo.macrodime.domain.Paywall
 import com.lungelo.macrodime.domain.PriceBook
+import com.lungelo.macrodime.domain.Store
 import com.lungelo.macrodime.engine.DietaryFilter
 import com.lungelo.macrodime.engine.FoodCatalog
 import com.lungelo.macrodime.engine.PriceTable
@@ -89,9 +90,15 @@ import com.lungelo.macrodime.ui.components.Caption
 import com.lungelo.macrodime.ui.components.LocalCurrency
 import com.lungelo.macrodime.ui.components.MacroCard
 import com.lungelo.macrodime.ui.components.contentWidth
+import com.lungelo.macrodime.ui.components.openExternal
 import com.lungelo.macrodime.ui.onboarding.OnboardingViewModel
+import com.lungelo.macrodime.ui.paywall.ProIcon
 import com.lungelo.macrodime.ui.theme.Brand
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 @Composable
@@ -100,6 +107,12 @@ fun SettingsScreen(
     repository: MacroDimeRepository,
     onEditProfile: () -> Unit,
     onOpenHealth: () -> Unit,
+    pro: StoreState = StoreState(),
+    store: Store = Store.GooglePlay,
+    onSeePlans: () -> Unit = {},
+    onManageSubscription: () -> Unit = {},
+    onRestore: () -> Unit = {},
+    onDeleted: () -> Unit = {},
 ) {
     val prices = LocalCurrency.current
     val context = LocalContext.current
@@ -127,6 +140,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            item { ProGroup(pro, store, onSeePlans, onManageSubscription, onRestore) }
             item {
                 Group("Your plan") {
                     Labeled("Goal", profile.goal.displayName)
@@ -224,7 +238,11 @@ fun SettingsScreen(
                         // No navigation needed: the root watches the profile, so
                         // removing it returns the app to onboarding on its own.
                         scope.launch {
-                            runCatching { repository.deleteAllUserData() }.onFailure { deleteError = it.message ?: "Unknown error" }
+                            runCatching { repository.deleteAllUserData() }
+                                // What the app remembers about Pro goes too. The subscription
+                                // itself belongs to the store account, and is found again.
+                                .onSuccess { onDeleted() }
+                                .onFailure { deleteError = it.message ?: "Unknown error" }
                         }
                     },
                     modifier = Modifier.testTag("confirm-delete"),
@@ -397,15 +415,42 @@ private fun ActionRow(
     }
 }
 
+private fun openLink(context: Context, url: String) = openExternal(context, url)
+
 /**
- * Hands a web address to the browser. MacroDime itself never connects to
- * anything: it has no internet permission, so the page loads in the browser,
- * not in the app.
+ * Pro's status and the ways in and out of it. Free accounts are offered the
+ * plans and a restore; subscribers get the store's own page for managing and
+ * cancelling, because the app cannot change a subscription itself.
  */
-private fun openLink(context: Context, url: String) {
-    try {
-        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-    } catch (_: ActivityNotFoundException) {
-        // No browser installed. Nothing useful to do; the URL is also in the store listing.
+@Composable
+private fun ProGroup(pro: StoreState, store: Store, onSeePlans: () -> Unit, onManage: () -> Unit, onRestore: () -> Unit) {
+    val entitlement = pro.entitlement
+    val plan = entitlement.plan
+    Group(
+        "MacroDime Pro",
+        footer = pro.message ?: if (pro.isPro) "Payments, renewal and cancellation are handled by ${store.displayName}." else Paywall.UPGRADE_DETAIL,
+    ) {
+        Labeled(
+            "Plan",
+            when {
+                !entitlement.isPro -> "Free"
+                plan != null -> "Pro, ${plan.title.lowercase(Locale.ROOT)}"
+                else -> "Pro"
+            },
+        )
+        val trialEnds = entitlement.trialEndsAtMillis?.takeIf { entitlement.isPro && it > System.currentTimeMillis() }
+        if (trialEnds != null) {
+            val date = Instant.ofEpochMilli(trialEnds).atZone(ZoneId.systemDefault()).toLocalDate()
+            Labeled("Free trial ends", date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)))
+        }
+        if (entitlement.isPro && !entitlement.willRenew) Labeled("Renewal", "Cancelled")
+        HorizontalDivider()
+        if (pro.isPro) {
+            ActionRow("Manage subscription", ProIcon, onClick = onManage, external = true, tag = "manage-subscription")
+        } else {
+            ActionRow("See Pro plans", ProIcon, onClick = onSeePlans, chevron = true, tag = "see-pro")
+            HorizontalDivider()
+            ActionRow("Restore purchases", Icons.Rounded.Restore, onClick = onRestore, tag = "restore-purchases")
+        }
     }
 }

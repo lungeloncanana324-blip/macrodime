@@ -37,11 +37,19 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lungelo.macrodime.MacroDimeApplication
+import com.lungelo.macrodime.billing.PreviewSubscriptionStore
+import com.lungelo.macrodime.billing.StoreState
 import com.lungelo.macrodime.data.DemoData
+import com.lungelo.macrodime.domain.Entitlement
+import com.lungelo.macrodime.domain.PaywallReason
+import com.lungelo.macrodime.domain.ProPlan
+import com.lungelo.macrodime.domain.Store
+import com.lungelo.macrodime.ui.paywall.PaywallContent
 import com.lungelo.macrodime.ui.theme.MacroDimeTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -110,7 +118,9 @@ abstract class ScreenshotBase {
         }
     }
 
-    protected fun launch(demo: Boolean, tab: Int = 0) {
+    /** [pro] defaults to the demo: the demo is a subscriber's app, a fresh install is not. */
+    protected fun launch(demo: Boolean, tab: Int = 0, pro: PreviewSubscriptionStore = if (demo) PreviewSubscriptionStore.subscriber() else PreviewSubscriptionStore()) {
+        container.subscriptions = pro
         runBlocking {
             container.repository.seedCatalog()
             if (demo) DemoData.install(container.repository)
@@ -160,6 +170,44 @@ abstract class ScreenshotBase {
         save("$prefix-tab-4-settings")
     }
 
+    /** The paywall in a given state, full screen, top and scrolled to its terms. */
+    protected fun paywall(name: String, state: StoreState, selected: ProPlan = ProPlan.Annual, savedSoFar: String? = null) {
+        runBlocking {
+            container.repository.seedCatalog()
+            DemoData.install(container.repository)
+        }
+        val profile = runBlocking { container.repository.currentProfile() }!!
+        compose.setContent {
+            MacroDimeTheme {
+                PaywallContent(
+                    state = state, store = Store.GooglePlay, profile = profile, reason = PaywallReason.AfterOnboarding,
+                    savedSoFar = savedSoFar, selected = selected, onSelect = {}, onPurchase = {}, onRestore = {},
+                    onRetry = {}, onDismissMessage = {}, onOpenPrivacy = {}, onClose = {},
+                )
+            }
+        }
+        waitForText("MacroDime Pro")
+        save(name)
+        if (state.offers.isNotEmpty()) {
+            // By index, not by node: the list runs on behind the pinned button,
+            // so "scrolled to the terms" can stop with them hidden under it.
+            // Items: headline, benefits, plans, then the timeline when there is a trial.
+            compose.onNode(hasScrollToNodeAction()).performScrollToIndex(if (state.offers[selected]?.freeTrial != null) 3 else 2)
+            save("$name-scrolled")
+        }
+    }
+
+    protected val ready = StoreState(StoreState.Availability.Ready, PreviewSubscriptionStore.DEFAULT_OFFERS)
+
+    /** A free account after "Not now": Today with the upgrade card, and the locked planner. */
+    protected fun freeAccount(prefix: String) {
+        launch(demo = true, pro = PreviewSubscriptionStore())
+        waitForText("Today's macros")
+        save("$prefix-free-1-today")
+        compose.onNodeWithTag("tab-Plan").performClick()
+        waitForText("Plan meals that fit")
+        save("$prefix-free-2-plan-locked")
+    }
 }
 
 @RunWith(AndroidJUnit4::class)
@@ -219,6 +267,41 @@ class LightScreenshotTest : ScreenshotBase() {
         waitForText("Meal Plan")
         save("large-text-tab-2-plan")
     }
+
+    @Test
+    fun paywall() = paywall("light-paywall", ready)
+
+    @Test
+    fun paywallMonthly() = paywall("light-paywall-monthly", ready, selected = ProPlan.Monthly)
+
+    /** Someone whose trial lapsed, shown their own savings first. */
+    @Test
+    fun paywallAfterATrial() = paywall("light-paywall-saved", ready, savedSoFar = "$4.50")
+
+    @Test
+    fun paywallWithoutGooglePlay() = paywall("light-paywall-unavailable", StoreState(StoreState.Availability.Unavailable))
+
+    @Test
+    fun freeAccount() = freeAccount("light")
+
+    @Test
+    fun trialReminder() {
+        val now = System.currentTimeMillis()
+        launch(demo = true, pro = PreviewSubscriptionStore(Entitlement(isPro = true, plan = ProPlan.Annual, verifiedAtMillis = now, trialEndsAtMillis = now + 30 * 3_600_000L)))
+        waitForText("Your free trial ends")
+        save("light-trial-reminder")
+    }
+
+    /** The plan cards and the button are where long prices and large text would clip first. */
+    @Test
+    @Config(qualifiers = "w360dp-h740dp-xxhdpi")
+    fun paywallNarrowPhone() = paywall("narrow-paywall", ready)
+
+    @Test
+    fun paywallLargeText() {
+        RuntimeEnvironment.setFontScale(1.6f)
+        paywall("large-text-paywall", ready)
+    }
 }
 
 @RunWith(AndroidJUnit4::class)
@@ -233,4 +316,10 @@ class DarkScreenshotTest : ScreenshotBase() {
 
     @Test
     fun swapReviewSheet() = swapReview("dark")
+
+    @Test
+    fun paywall() = paywall("dark-paywall", ready)
+
+    @Test
+    fun freeAccount() = freeAccount("dark")
 }

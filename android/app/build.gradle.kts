@@ -119,9 +119,11 @@ android {
 // is that the app holds no permission to send anything: no INTERNET, no
 // storage, nothing. A library can merge a permission into the manifest without
 // anyone noticing, so the release manifest is checked here and the build fails
-// if one appears. The only entry allowed is the signature-level permission
+// if one appears. Two entries are allowed: the signature-level permission
 // androidx.core declares for the app's own unexported receivers, which grants
-// no capability.
+// no capability, and com.android.vending.BILLING, which Play Billing declares
+// so the app can talk to the Play Store app about MacroDime Pro. Neither lets
+// the app reach the network; there is still no INTERNET.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
@@ -135,7 +137,10 @@ androidComponents {
                 val text = manifest.get().asFile.readText()
                 val requested = Regex("""<uses-permission[^>]*android:name="([^"]+)"""")
                     .findAll(text).map { it.groupValues[1] }.toSet()
-                val allowed = setOf("${applicationId.get()}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+                val allowed = setOf(
+                    "${applicationId.get()}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+                    "com.android.vending.BILLING",
+                )
                 val unexpected = requested - allowed
                 if (unexpected.isNotEmpty()) {
                     throw GradleException(
@@ -171,6 +176,10 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
+
+    // MacroDime Pro. Talks to the Play Store app on the phone, never to a
+    // server of ours, and adds only the BILLING permission (verified below).
+    implementation(libs.play.billing.ktx)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

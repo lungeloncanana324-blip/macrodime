@@ -8,6 +8,9 @@
 package com.lungelo.macrodime
 
 import android.app.Application
+import com.lungelo.macrodime.billing.PlayBillingStore
+import com.lungelo.macrodime.billing.ProPreferences
+import com.lungelo.macrodime.billing.SubscriptionStore
 import com.lungelo.macrodime.data.MacroDimeDatabase
 import com.lungelo.macrodime.data.MacroDimeRepository
 import com.lungelo.macrodime.data.PhotoStore
@@ -24,6 +27,14 @@ class AppContainer(application: Application) {
 
     /** Work that must finish even if the screen that started it goes away. */
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    val proPreferences = ProPreferences(application)
+
+    /**
+     * MacroDime Pro through Google Play. Replaced by PreviewSubscriptionStore
+     * in tests and in debug screenshots, where there is no Play Store to ask.
+     */
+    var subscriptions: SubscriptionStore = PlayBillingStore(application, proPreferences, applicationScope)
 }
 
 class MacroDimeApplication : Application() {

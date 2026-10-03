@@ -1,14 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    No <uses-permission> at all, deliberately. MacroDime has no internet
-    permission, so it cannot send anything anywhere: that is what the Play
-    Data safety answer "No data collected" rests on, and the build fails if a
-    dependency ever merges one in (see verifyNoPermissions in app/build.gradle.kts).
-    Progress photos come through the system photo picker, which needs no
-    storage permission.
+    MacroDime has no internet permission, so it cannot send anything anywhere:
+    that is what the Play Data safety answer "No data collected" rests on, and
+    the build fails if a dependency ever merges a permission in (see
+    verifyReleasePermissions in app/build.gradle.kts). Progress photos come
+    through the system photo picker, which needs no storage permission.
+
+    The one permission the app holds is com.android.vending.BILLING, which
+    Play Billing declares: it lets the app ask the Play Store app on the phone
+    about MacroDime Pro. The Play Store app does the networking for a purchase.
+
+    Play Billing 9 also brings Google's Data Transport library, to upload the
+    billing library's own diagnostics to Google, and that library merges in
+    INTERNET and ACCESS_NETWORK_STATE. Both are removed below. Billing works
+    without them, because purchases go through the Play Store app. Data
+    Transport reads the network state on its own executor, SafeLoggingExecutor,
+    which catches the refusal and logs it, so a diagnostic is dropped before it
+    is stored and nothing crashes or retries in the background. Checked in the
+    9.1.0 / 3.1.8 bytecode on 2026-10-03; recheck when either is upgraded.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <application
         android:name=".MacroDimeApplication"

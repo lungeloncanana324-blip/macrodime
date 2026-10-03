@@ -29,6 +29,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lungelo.macrodime.MacroDimeApplication
+import com.lungelo.macrodime.billing.PreviewSubscriptionStore
 import com.lungelo.macrodime.domain.MealSlot
 import com.lungelo.macrodime.ui.theme.MacroDimeTheme
 import kotlinx.coroutines.runBlocking
@@ -52,6 +53,8 @@ class AppFlowTest {
     private val repository get() = container.repository
 
     private fun launch() {
+        // A subscriber, so these flows reach the planner. ProFlowTest covers a free account.
+        container.subscriptions = PreviewSubscriptionStore.subscriber()
         runBlocking { repository.seedCatalog() }
         compose.setContent { MacroDimeTheme { MacroDimeRoot(container) } }
     }

@@ -31,6 +31,10 @@ interface MacroDimeDao {
     @Upsert
     suspend fun upsertProfile(profile: UserProfileEntity)
 
+    /** Every saving a swap has made, in USD: the figure a lapsed trial is shown first. */
+    @Query("SELECT COALESCE(SUM(swapSavings), 0) FROM planned_meal")
+    fun observeTotalSwapSavings(): Flow<Double>
+
     // Measurements
 
     @Query("SELECT * FROM body_measurement WHERE profileId = :profileId ORDER BY recordedAt")

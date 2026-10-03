@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
+import com.lungelo.macrodime.billing.PreviewSubscriptionStore
 import com.lungelo.macrodime.data.DemoData
 import com.lungelo.macrodime.ui.MacroDimeRoot
 import com.lungelo.macrodime.ui.theme.MacroDimeTheme
@@ -25,6 +26,8 @@ class MainActivity : ComponentActivity() {
         if (wantsDemo && savedInstanceState == null) {
             lifecycleScope.launch { runCatching { DemoData.install(container.repository) } }
         }
+        // The demo is a subscriber's app, which is what the store screenshots show.
+        if (wantsDemo) container.subscriptions = PreviewSubscriptionStore.subscriber()
 
         setContent {
             MacroDimeTheme {

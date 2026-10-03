@@ -57,7 +57,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lungelo.macrodime.data.measurementSystem
 import com.lungelo.macrodime.data.prescription
 import com.lungelo.macrodime.data.waistChangeCm
+import com.lungelo.macrodime.billing.StoreState
 import com.lungelo.macrodime.domain.DisplayFormat
+import com.lungelo.macrodime.domain.Entitlement
+import com.lungelo.macrodime.domain.EntitlementPolicy
+import com.lungelo.macrodime.domain.PaywallReason
+import com.lungelo.macrodime.domain.Store
 import com.lungelo.macrodime.domain.roundToIntHalfAway
 import com.lungelo.macrodime.engine.MacroAxis
 import com.lungelo.macrodime.engine.MealSwap
@@ -75,6 +80,8 @@ import com.lungelo.macrodime.ui.components.formatted
 import com.lungelo.macrodime.ui.plan.DayPlanState
 import com.lungelo.macrodime.ui.plan.DayPlanViewModel
 import com.lungelo.macrodime.ui.plan.EmptyState
+import com.lungelo.macrodime.ui.paywall.TrialReminderCard
+import com.lungelo.macrodime.ui.paywall.UpgradeCard
 import com.lungelo.macrodime.ui.plan.SwapReviewSheet
 import com.lungelo.macrodime.ui.theme.Brand
 import java.time.Instant
@@ -83,7 +90,14 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 @Composable
-fun TodayScreen(model: DayPlanViewModel, onLogMeasurement: () -> Unit) {
+fun TodayScreen(
+    model: DayPlanViewModel,
+    onLogMeasurement: () -> Unit,
+    pro: StoreState = StoreState(entitlement = Entitlement(isPro = true)),
+    store: Store = Store.GooglePlay,
+    onUpgrade: (PaywallReason) -> Unit = {},
+    onManageSubscription: () -> Unit = {},
+) {
     val state by model.state.collectAsStateWithLifecycle()
     var swapUnderReview by remember { mutableStateOf<MealSwap?>(null) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -117,10 +131,19 @@ fun TodayScreen(model: DayPlanViewModel, onLogMeasurement: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            val now = System.currentTimeMillis()
+            if (EntitlementPolicy.showsTrialReminder(pro.entitlement, now)) {
+                item { TrialReminderCard(pro, store, now, onManageSubscription) }
+            }
             item { MacrosCard(state) }
-            item { CostCard(state) }
-            item { Column(Modifier.contentWidth()) { PlanGapsCard(state.audit, title = "Today's gaps") } }
-            state.bestSwap?.let { best -> item { SwapPreviewCard(best) { swapUnderReview = best } } }
+            if (pro.isPro) {
+                item { CostCard(state) }
+                item { Column(Modifier.contentWidth()) { PlanGapsCard(state.audit, title = "Today's gaps") } }
+                state.bestSwap?.let { best -> item { SwapPreviewCard(best) { swapUnderReview = best } } }
+            } else {
+                // The targets stay free. What they would buy, planned, is Pro.
+                state.profile?.let { profile -> item { UpgradeCard(profile, pro) { onUpgrade(PaywallReason.Planner) } } }
+            }
             item { ProgressCard(state, onLogMeasurement) }
             item { PowerhousesCard(state) }
         }

@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -45,7 +46,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lungelo.macrodime.AppContainer
 import com.lungelo.macrodime.data.UserProfileEntity
 import com.lungelo.macrodime.data.currency
+import com.lungelo.macrodime.domain.PaywallReason
 import com.lungelo.macrodime.ui.components.LocalCurrency
+import com.lungelo.macrodime.ui.components.openExternal
+import com.lungelo.macrodime.ui.paywall.PaywallScreen
+import com.lungelo.macrodime.ui.paywall.ProLockedTab
 import com.lungelo.macrodime.ui.groceries.GroceryScreen
 import com.lungelo.macrodime.ui.groceries.GroceryViewModel
 import com.lungelo.macrodime.ui.onboarding.OnboardingScreen
@@ -74,6 +79,16 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 fun MacroDimeRoot(container: AppContainer, initialTab: Int = 0) {
     val app = appViewModel { AppViewModel(container.repository) }
     val state by app.state.collectAsStateWithLifecycle()
+    val subscriptions = container.subscriptions
+
+    // The store is asked again whenever the app comes to the front, so a
+    // purchase, a cancellation or an expiry elsewhere shows up straight away.
+    LifecycleResumeEffect(subscriptions) {
+        subscriptions.refresh()
+        onPauseOrDispose { }
+    }
+    // Set when onboarding saves: the paywall then opens on the targets just made.
+    var justOnboarded by rememberSaveable { mutableStateOf(false) }
 
     when (val current = state) {
         // A blank frame, never the wizard: a returning user must not see
@@ -83,21 +98,46 @@ fun MacroDimeRoot(container: AppContainer, initialTab: Int = 0) {
         is RootState.Onboarding -> {
             val model = appViewModel(key = "onboarding-${current.session}") { OnboardingViewModel(container.repository) }
             remember(model) { model.start(current.existing); true }
-            OnboardingScreen(model, onClose = null, onSaved = {})
+            OnboardingScreen(model, onClose = null, onSaved = { justOnboarded = true })
         }
 
         is RootState.Main -> CompositionLocalProvider(LocalCurrency provides current.profile.currency) {
-            MainTabs(container, current.profile, initialTab)
+            MainTabs(container, current.profile, initialTab, justOnboarded, onIntroPaywallDone = { justOnboarded = false })
         }
     }
 }
 
 @Composable
-private fun MainTabs(container: AppContainer, profile: UserProfileEntity, initialTab: Int) {
+private fun MainTabs(
+    container: AppContainer,
+    profile: UserProfileEntity,
+    initialTab: Int,
+    justOnboarded: Boolean,
+    onIntroPaywallDone: () -> Unit,
+) {
     var tab by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, Tab.entries.lastIndex)) }
     var isEditingProfile by rememberSaveable { mutableStateOf(false) }
     var isReadingHealth by rememberSaveable { mutableStateOf(false) }
     var isLoggingMeasurement by rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val subscriptions = container.subscriptions
+    val pro by subscriptions.state.collectAsStateWithLifecycle()
+    val savedSoFar by container.repository.totalSwapSavings.collectAsStateWithLifecycle(initialValue = 0.0)
+    var paywallReason by rememberSaveable { mutableStateOf<PaywallReason?>(null) }
+    val manageSubscription = { openExternal(context, subscriptions.manageSubscriptionUrl) }
+
+    // Straight after onboarding, unless the store already knows this account
+    // has Pro (a reinstall, say): then there is nothing to sell.
+    if (justOnboarded && !pro.isPro) {
+        PaywallScreen(subscriptions, profile, PaywallReason.AfterOnboarding, savedSoFar, onClose = onIntroPaywallDone)
+        return
+    }
+    val openReason = paywallReason
+    if (openReason != null) {
+        PaywallScreen(subscriptions, profile, openReason, savedSoFar, onClose = { paywallReason = null })
+        return
+    }
 
     val today = appViewModel(key = "today") { DayPlanViewModel(container.repository) }
     val plan = appViewModel(key = "plan") { DayPlanViewModel(container.repository) }
@@ -147,20 +187,53 @@ private fun MainTabs(container: AppContainer, profile: UserProfileEntity, initia
     ) { padding ->
         Box(Modifier.padding(padding).consumeWindowInsets(padding)) {
             when (Tab.entries[tab]) {
-                Tab.Today -> TodayScreen(today, onLogMeasurement = { isLoggingMeasurement = true })
-                Tab.Plan -> PlanScreen(plan)
-                Tab.Groceries -> GroceryScreen(groceries, onGoToPlan = { tab = Tab.Plan.ordinal })
+                Tab.Today -> TodayScreen(
+                    today,
+                    onLogMeasurement = { isLoggingMeasurement = true },
+                    pro = pro,
+                    store = subscriptions.store,
+                    onUpgrade = { paywallReason = it },
+                    onManageSubscription = manageSubscription,
+                )
+                Tab.Plan ->
+                    if (pro.isPro) {
+                        PlanScreen(plan)
+                    } else {
+                        ProLockedTab("Meal Plan", PaywallReason.Planner, profile, pro, subscriptions.store) { paywallReason = PaywallReason.Planner }
+                    }
+                Tab.Groceries ->
+                    if (pro.isPro) {
+                        GroceryScreen(groceries, onGoToPlan = { tab = Tab.Plan.ordinal })
+                    } else {
+                        ProLockedTab("Groceries", PaywallReason.Groceries, profile, pro, subscriptions.store) { paywallReason = PaywallReason.Groceries }
+                    }
                 Tab.Settings -> SettingsScreen(
                     profile,
                     container.repository,
                     onEditProfile = { isEditingProfile = true },
                     onOpenHealth = { isReadingHealth = true },
+                    pro = pro,
+                    store = subscriptions.store,
+                    onSeePlans = { paywallReason = PaywallReason.Settings },
+                    onManageSubscription = manageSubscription,
+                    onRestore = subscriptions::restore,
+                    onDeleted = subscriptions::forget,
                 )
             }
         }
     }
 
     if (isLoggingMeasurement) {
-        LogMeasurementSheet(profile, container.repository, container.photos, onDismiss = { isLoggingMeasurement = false })
+        LogMeasurementSheet(
+            profile,
+            container.repository,
+            container.photos,
+            onDismiss = { isLoggingMeasurement = false },
+            isPro = pro.isPro,
+            onUpgradeForPhotos = {
+                isLoggingMeasurement = false
+                paywallReason = PaywallReason.ProgressPhotos
+            },
+        )
     }
 }
