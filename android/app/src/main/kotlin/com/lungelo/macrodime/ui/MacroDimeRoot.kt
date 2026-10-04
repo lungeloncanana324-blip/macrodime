@@ -54,6 +54,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lungelo.macrodime.AppContainer
 import com.lungelo.macrodime.billing.StoreState
 import com.lungelo.macrodime.billing.TrialReminder
+import com.lungelo.macrodime.billing.findActivity
 import com.lungelo.macrodime.data.UserProfileEntity
 import com.lungelo.macrodime.data.currency
 import com.lungelo.macrodime.domain.MealItem
@@ -98,6 +99,8 @@ fun MacroDimeRoot(container: AppContainer, initialTab: Int = 0) {
     // purchase, a cancellation or an expiry elsewhere shows up straight away.
     LifecycleResumeEffect(subscriptions) {
         subscriptions.refresh()
+        // Google Play's own word on a failed payment, if there is one.
+        context.findActivity()?.let(subscriptions::showPaymentMessages)
         onPauseOrDispose { }
     }
     // The trial reminder follows the store's answer: a trial schedules it, a

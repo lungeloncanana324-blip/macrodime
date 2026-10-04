@@ -27,6 +27,11 @@ data class StoreState(
     val isPurchasing: Boolean = false,
     /** A payment the store has not confirmed yet (cash, some bank transfers). */
     val isPending: Boolean = false,
+    /**
+     * The store holds a subscription it has suspended: a failed payment (Play's
+     * account hold) or a pause. It is fixed in the store, not bought again.
+     */
+    val isOnHold: Boolean = false,
     /** The last thing worth telling the person, cleared by [SubscriptionStore.clearMessage]. */
     val message: String? = null,
 ) {
@@ -56,6 +61,13 @@ interface SubscriptionStore {
 
     /** Asks the store what this account owns, and says so if it owns nothing. */
     fun restore()
+
+    /**
+     * Lets the store show its own message about a payment that failed, with
+     * the way to fix it. Called whenever the app comes to the front; the store
+     * shows nothing when there is nothing wrong.
+     */
+    fun showPaymentMessages(activity: Activity) = Unit
 
     fun clearMessage()
 

@@ -24,6 +24,7 @@ class PreviewSubscriptionStore(
     entitlement: Entitlement = Entitlement.FREE,
     availability: StoreState.Availability = StoreState.Availability.Ready,
     offers: Map<ProPlan, ProOffer> = DEFAULT_OFFERS,
+    onHold: Boolean = false,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : SubscriptionStore {
 
@@ -35,6 +36,7 @@ class PreviewSubscriptionStore(
             availability = availability,
             offers = if (availability == StoreState.Availability.Ready) offers else emptyMap(),
             entitlement = entitlement,
+            isOnHold = onHold,
         ),
     )
     override val state: StateFlow<StoreState> = _state.asStateFlow()
@@ -56,7 +58,7 @@ class PreviewSubscriptionStore(
     }
 
     override fun restore() {
-        if (!_state.value.isPro) _state.update { it.copy(message = PlayBillingStore.NOTHING_TO_RESTORE) }
+        if (!_state.value.isPro && !_state.value.isOnHold) _state.update { it.copy(message = PlayBillingStore.NOTHING_TO_RESTORE) }
     }
 
     override fun clearMessage() = _state.update { it.copy(message = null) }

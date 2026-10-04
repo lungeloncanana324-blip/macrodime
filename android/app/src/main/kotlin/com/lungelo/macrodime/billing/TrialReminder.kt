@@ -98,7 +98,7 @@ object TrialReminder {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val title = EntitlementPolicy.reminderTitle(EntitlementPolicy.REMINDER_DAYS)
-        val text = EntitlementPolicy.reminderDetail(Entitlement(isPro = true), null, Store.GooglePlay)
+        val text = EntitlementPolicy.reminderNotice(Store.GooglePlay)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher_monochrome)
             .setContentTitle(title)

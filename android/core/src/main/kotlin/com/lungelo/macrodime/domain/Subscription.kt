@@ -16,9 +16,10 @@
  *     Play leaves out offers a user is not eligible for, and StoreKit answers
  *     isEligibleForIntroOffer; the copy follows, so nobody is promised a trial
  *     they will be charged for.
- *  3. The terms are stated before the button, in full: trial length, the price
- *     after it, that it renews, and where to cancel. Both stores require it,
- *     and a charge nobody expected becomes a refund and a one-star review.
+ *  3. The terms are stated before the button, in full: that the app needs a
+ *     subscription, the trial length, the price after it, that it renews, and
+ *     where to cancel. Both stores require it, and a charge nobody expected
+ *     becomes a refund and a one-star review.
  */
 package com.lungelo.macrodime.domain
 
@@ -131,6 +132,26 @@ object Paywall {
     /** Beside the button whenever the store offers a trial: the line that answers the first worry. */
     const val NO_PAYMENT_TODAY = "No payment today"
 
+    /**
+     * Play's policy asks every offer to say whether a subscription is needed to
+     * use the app at all. Here it is, and the paywall has no close button, so
+     * it is said above the plans and again in the terms.
+     */
+    const val SUBSCRIPTION_REQUIRED = "A subscription is required to use MacroDime."
+
+    /**
+     * For a subscription the store holds but has suspended: a payment that
+     * failed (Play's account hold) or a pause. Nothing new is sold to them;
+     * the store is where it is fixed.
+     */
+    const val ON_HOLD_HEADLINE = "Your subscription is on hold"
+
+    fun onHoldDetail(store: Store): String =
+        "${store.displayName.replaceFirstChar { it.uppercase() }} couldn't take your last payment, or the subscription is paused. " +
+            "Sort it out in ${store.displayName} and your plan opens again, just as you left it."
+
+    fun onHoldAction(store: Store): String = "Fix it in ${store.displayName}"
+
     /** One plan, as its card on the paywall reads. */
     data class PlanCard(
         val plan: ProPlan,
@@ -179,13 +200,14 @@ object Paywall {
     fun callToAction(offer: ProOffer): String =
         offer.freeTrial?.let { "Start my ${it.adjective} free trial" } ?: "Subscribe for ${priceLine(offer)}"
 
-    /** The terms, stated in full under the button. */
+    /** The terms, stated in full under the button, starting with the fact that the app needs them. */
     fun disclosure(offer: ProOffer, store: Store): String {
         val price = priceLine(offer)
         val renews = "$PRO_NAME renews ${offer.plan.every} until you cancel."
-        return offer.freeTrial?.let { trial ->
+        val terms = offer.freeTrial?.let { trial ->
             "${trial.phrase.replaceFirstChar { it.uppercase() }} free, then $price. $renews ${store.cancelBeforeTrialEnds}"
         } ?: "$price. $renews ${store.cancelAnyTime}"
+        return "$SUBSCRIPTION_REQUIRED $terms"
     }
 
     /**
@@ -220,7 +242,8 @@ object Paywall {
      * whose swaps have already saved money (which means they had Pro, in a
      * trial) is shown that figure first: their own result, not a promise.
      */
-    fun headline(reason: PaywallReason, savedSoFar: String?): String = when {
+    fun headline(reason: PaywallReason, savedSoFar: String?, isOnHold: Boolean = false): String = when {
+        isOnHold -> ON_HOLD_HEADLINE
         savedSoFar != null -> "Your swaps have saved you $savedSoFar"
         reason == PaywallReason.AfterOnboarding -> "Your week is ready"
         else -> "Welcome back"
@@ -319,6 +342,14 @@ object EntitlementPolicy {
     }
 
     /**
+     * The notification's words. An alarm posts it with no fresh answer from the
+     * store, so it cannot know whether the trial was cancelled in the store
+     * since the app was last opened: it says what is true either way.
+     */
+    fun reminderNotice(store: Store): String =
+        "If you haven't cancelled, ${Paywall.PRO_NAME} then renews at the price you agreed to. ${store.cancelBeforeTrialEnds}"
+
+    /**
      * The entitlement a store's list of purchases gives, confirmed at [nowMillis].
      * A purchase counts while it is paid for and not suspended (Play's account
      * hold); a payment still pending gives nothing yet. The plan and the trial's
@@ -339,6 +370,16 @@ object EntitlementPolicy {
             willRenew = active.isAutoRenewing,
         )
     }
+
+    /**
+     * True when the store holds a suspended subscription (Play's account hold
+     * after a failed payment, or a pause) and nothing active. Such a person has
+     * no Pro, but is sent to the store to fix it, never sold a second
+     * subscription. Play reports suspended subscriptions only when asked to.
+     */
+    fun isOnHold(purchases: List<StorePurchase>, productId: String): Boolean =
+        purchases.none { productId in it.productIds && it.isPurchased && !it.isSuspended } &&
+            purchases.any { productId in it.productIds && it.isSuspended }
 
     /** Play refunds a purchase not acknowledged within three days, so every paid one is acknowledged. */
     fun needsAcknowledging(purchase: StorePurchase): Boolean = purchase.isPurchased && !purchase.isAcknowledged

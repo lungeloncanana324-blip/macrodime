@@ -25,6 +25,8 @@ import com.android.billingclient.api.BillingClient.BillingResponseCode
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
+import com.android.billingclient.api.InAppMessageParams
+import com.android.billingclient.api.InAppMessageResult
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
@@ -42,6 +44,7 @@ import com.lungelo.macrodime.domain.PurchaseRecord
 import com.lungelo.macrodime.domain.Store
 import com.lungelo.macrodime.domain.StorePurchase
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +53,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
@@ -98,7 +102,8 @@ class PlayBillingStore(
             lock.withLock {
                 load()
                 val now = _state.value
-                if (now.availability == StoreState.Availability.Ready && !now.isPro) {
+                // On hold is not "nothing found": the paywall already says what happened.
+                if (now.availability == StoreState.Availability.Ready && !now.isPro && !now.isOnHold) {
                     _state.update { it.copy(message = NOTHING_TO_RESTORE) }
                 }
             }
@@ -106,6 +111,27 @@ class PlayBillingStore(
     }
 
     override fun clearMessage() = _state.update { it.copy(message = null) }
+
+    /**
+     * Google Play's own message for a payment that failed: a subscriber in the
+     * grace period still has Pro and would otherwise hear nothing until Play
+     * suspends it. Play draws the message and its fix-it button; when the
+     * person fixes it there, the store is asked again.
+     */
+    override fun showPaymentMessages(activity: Activity) {
+        scope.launch {
+            if (!lock.withLock { connect() }) return@launch
+            val params = InAppMessageParams.newBuilder()
+                .addInAppMessageCategoryToShow(InAppMessageParams.InAppMessageCategoryId.TRANSACTIONAL)
+                .build()
+            withContext(Dispatchers.Main) {
+                if (activity.isFinishing || activity.isDestroyed) return@withContext
+                client.showInAppMessages(activity, params) { result ->
+                    if (result.responseCode == InAppMessageResult.InAppMessageResponseCode.SUBSCRIPTION_STATUS_UPDATED) refresh()
+                }
+            }
+        }
+    }
 
     override fun forget() {
         preferences.clear()
@@ -198,12 +224,18 @@ class PlayBillingStore(
         }
 
         val owned = client.queryPurchasesAsync(
-            QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build(),
+            QueryPurchasesParams.newBuilder()
+                .setProductType(BillingClient.ProductType.SUBS)
+                // Without this Play leaves out a suspended subscription (a failed
+                // payment, or a pause), and its owner would be sold a new one.
+                .includeSuspendedSubscriptions(true)
+                .build(),
         )
-        val live = if (owned.billingResult.responseCode == BillingResponseCode.OK) {
-            val purchases = owned.purchasesList.orEmpty()
-            acknowledge(purchases)
-            EntitlementPolicy.fromPurchases(purchases.map { it.toStorePurchase() }, PlayOffers.PRODUCT_ID, preferences.record, clock())
+        val ownedOk = owned.billingResult.responseCode == BillingResponseCode.OK
+        val reported = owned.purchasesList.orEmpty().map { it.toStorePurchase() }
+        val live = if (ownedOk) {
+            acknowledge(owned.purchasesList.orEmpty())
+            EntitlementPolicy.fromPurchases(reported, PlayOffers.PRODUCT_ID, preferences.record, clock())
         } else {
             null
         }
@@ -218,6 +250,7 @@ class PlayBillingStore(
                 entitlement = EntitlementPolicy.resolve(live, preferences.entitlement, clock()),
                 isPurchasing = false,
                 isPending = pending,
+                isOnHold = if (ownedOk) EntitlementPolicy.isOnHold(reported, PlayOffers.PRODUCT_ID) else it.isOnHold,
                 message = when {
                     pending -> PENDING
                     // A failure to load the plans, now loaded, is no longer news.

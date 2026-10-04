@@ -217,13 +217,13 @@ abstract class ScreenshotBase {
                     state = state, store = Store.GooglePlay, profile = profile, reason = reason,
                     savedSoFar = savedSoFar, preview = preview, selected = selected, remind = true,
                     onSelect = {}, onRemindChange = {}, onPurchase = {}, onRestore = {}, onRetry = {},
-                    onDismissMessage = {}, onOpenPrivacy = {}, onOpenHealth = {}, onDeleteAll = {},
+                    onDismissMessage = {}, onOpenPrivacy = {}, onOpenHealth = {}, onDeleteAll = {}, onManage = {},
                 )
             }
         }
         waitForText("MacroDime Pro")
         save(name)
-        if (state.offers.isNotEmpty()) {
+        if (state.offers.isNotEmpty() && !state.isOnHold) {
             // By index, not by node: the list runs on behind the pinned button.
             // Items: photo, headline, today's meals, benefits, plans, timeline, reminder, terms.
             compose.onNode(hasScrollToNodeAction()).performScrollToIndex(4)
@@ -315,6 +315,9 @@ class LightScreenshotTest : ScreenshotBase() {
 
     @Test
     fun paywallWithoutGooglePlay() = paywall("light-paywall-unavailable", StoreState(StoreState.Availability.Unavailable))
+
+    @Test
+    fun paywallOnHold() = paywall("light-paywall-on-hold", ready.copy(isOnHold = true), reason = PaywallReason.Returning)
 
     @Test
     fun lapsed() = lapsed("light")

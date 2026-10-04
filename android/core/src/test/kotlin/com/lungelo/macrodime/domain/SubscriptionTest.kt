@@ -135,12 +135,14 @@ class SubscriptionTest {
     @Test
     fun theTermsSayWhatHappensAfterTheTrial() {
         assertEquals(
-            "14 days free, then ${usd(29.99)} a year. MacroDime Pro renews every year until you cancel. " +
+            "A subscription is required to use MacroDime. " +
+                "14 days free, then ${usd(29.99)} a year. MacroDime Pro renews every year until you cancel. " +
                 "Cancel in Google Play before the trial ends and you won't be charged.",
             Paywall.disclosure(annual, Store.GooglePlay),
         )
         assertEquals(
-            "${usd(5.99)} a month. MacroDime Pro renews every month until you cancel. Cancel any time in Google Play.",
+            "A subscription is required to use MacroDime. " +
+                "${usd(5.99)} a month. MacroDime Pro renews every month until you cancel. Cancel any time in Google Play.",
             Paywall.disclosure(monthly, Store.GooglePlay),
         )
         assertTrue("24 hours" in Paywall.disclosure(annual, Store.AppStore), "Apple's cancellation window must be stated")
@@ -158,6 +160,7 @@ class SubscriptionTest {
         for (store in Store.entries) for (plan in ProPlan.entries) for (trial in trials) {
             val offer = ProOffer(plan, if (plan == ProPlan.Annual) 29.99 else 5.99, "USD", trial)
             val terms = Paywall.disclosure(offer, store)
+            assertTrue(terms.startsWith(Paywall.SUBSCRIPTION_REQUIRED), "that a subscription is required must come first: $terms")
             assertTrue(Paywall.priceLine(offer) in terms, "price missing: $terms")
             assertTrue("renews" in terms, "renewal missing: $terms")
             assertTrue("cancel" in terms.lowercase(), "cancellation missing: $terms")
@@ -172,6 +175,11 @@ class SubscriptionTest {
             for (text in everything) assertFalse(dashes.any { it in text }, "a dash in: $text")
         }
         for (reason in PaywallReason.entries) assertFalse(dashes.any { it in Paywall.headline(reason, null) })
+        for (store in Store.entries) {
+            val more = listOf(Paywall.onHoldDetail(store), Paywall.onHoldAction(store), EntitlementPolicy.reminderNotice(store))
+            for (text in more) assertFalse(dashes.any { it in text }, "a dash in: $text")
+        }
+        assertFalse(dashes.any { it in Paywall.SUBSCRIPTION_REQUIRED + Paywall.ON_HOLD_HEADLINE })
         for (benefit in Paywall.benefits) assertFalse(dashes.any { it in benefit.title + benefit.detail })
     }
 
@@ -197,6 +205,19 @@ class SubscriptionTest {
         assertEquals("Your swaps have saved you $4.50", Paywall.headline(PaywallReason.Returning, "$4.50"))
         assertEquals("Your week is ready", Paywall.headline(PaywallReason.AfterOnboarding, null))
         assertEquals("Welcome back", Paywall.headline(PaywallReason.Returning, null))
+    }
+
+    /** A subscription on hold is not a lapsed one: no welcome back, no savings pitch, just what happened. */
+    @Test
+    fun aSubscriptionOnHoldIsToldWhatHappenedAndWhereToFixIt() {
+        assertEquals("Your subscription is on hold", Paywall.headline(PaywallReason.Returning, "$4.50", isOnHold = true))
+        assertEquals(
+            "Google Play couldn't take your last payment, or the subscription is paused. " +
+                "Sort it out in Google Play and your plan opens again, just as you left it.",
+            Paywall.onHoldDetail(Store.GooglePlay),
+        )
+        assertTrue(Paywall.onHoldDetail(Store.AppStore).startsWith("The App Store couldn't"))
+        assertEquals("Fix it in Google Play", Paywall.onHoldAction(Store.GooglePlay))
     }
 
     // What the app remembers about Pro
@@ -273,6 +294,20 @@ class SubscriptionTest {
         )
     }
 
+    /**
+     * The notification fires from an alarm, without asking the store, so it
+     * may reach someone who cancelled in Google Play and has not opened the
+     * app since. Its words are true for them as well.
+     */
+    @Test
+    fun theReminderNotificationIsTrueWhetherOrNotTheTrialWasCancelled() {
+        assertEquals(
+            "If you haven't cancelled, MacroDime Pro then renews at the price you agreed to. " +
+                "Cancel in Google Play before the trial ends and you won't be charged.",
+            EntitlementPolicy.reminderNotice(Store.GooglePlay),
+        )
+    }
+
     // Purchases, as a store reports them
 
     private fun purchase(
@@ -310,6 +345,24 @@ class SubscriptionTest {
         assertTrue(other.isPro)
         assertNull(other.plan)
         assertNull(other.trialEndsAtMillis)
+    }
+
+    /**
+     * Play's account hold (a failed payment) and a pause both arrive as a
+     * suspended purchase, and only when the app asks for them. No Pro, but the
+     * person is on hold, to be sent to Google Play rather than sold again.
+     */
+    @Test
+    fun aSuspendedSubscriptionIsOnHoldNotLapsed() {
+        val held = listOf(purchase(suspended = true))
+        assertFalse(EntitlementPolicy.fromPurchases(held, PlayOffers.PRODUCT_ID, null, now).isPro)
+        assertTrue(EntitlementPolicy.isOnHold(held, PlayOffers.PRODUCT_ID))
+        // An active subscription beside it wins: nothing is on hold for this person.
+        assertFalse(EntitlementPolicy.isOnHold(held + purchase(token = "t2"), PlayOffers.PRODUCT_ID))
+        // Nothing at all, a lapse, a pending payment, or another product's suspension: not on hold.
+        assertFalse(EntitlementPolicy.isOnHold(emptyList(), PlayOffers.PRODUCT_ID))
+        assertFalse(EntitlementPolicy.isOnHold(listOf(purchase(purchased = false)), PlayOffers.PRODUCT_ID))
+        assertFalse(EntitlementPolicy.isOnHold(listOf(purchase(product = "something-else", suspended = true)), PlayOffers.PRODUCT_ID))
     }
 
     @Test
@@ -381,5 +434,76 @@ class SubscriptionTest {
         val selected = PlayOffers.select(listOf(week, fortnight))[ProPlan.Annual]
         assertEquals("two-weeks", selected?.offerToken)
         assertEquals("14-day", selected?.offer?.freeTrial?.adjective)
+    }
+
+    // The launch configuration, end to end
+
+    /**
+     * Play Console as docs/play-store-listing.md sets it up: product `pro`, base
+     * plan `annual` at $29.99 a year, and the `free-trial-14-days` offer on it.
+     * Everything the paywall says is generated from exactly what Play returns.
+     */
+    @Test
+    fun theLaunchConfigurationIsSoldAsFourteenDaysFreeThenTheYearlyPrice() {
+        for (trialPhase in listOf(freeTwoWeeks, phase(0, "P14D", PlayOffers.FINITE_RECURRING, 1))) {
+            val selected = PlayOffers.select(
+                listOf(
+                    PlayOffers.Input("annual", null, "annual-base", listOf(yearly)),
+                    PlayOffers.Input("annual", "free-trial-14-days", "annual-trial", listOf(trialPhase, yearly)),
+                ),
+            )
+            assertNull(selected[ProPlan.Monthly], "no monthly base plan is active at launch")
+            val sold = assertNotNull(selected[ProPlan.Annual])
+            assertEquals("annual-trial", sold.offerToken)
+
+            val offer = sold.offer
+            val card = Paywall.card(offer, selected[ProPlan.Monthly]?.offer)
+            assertEquals("${usd(29.99)} a year", card.price)
+            assertEquals("${usd(2.50)} a month", card.perMonth)
+            assertNull(card.badge, "no saving can be claimed without a monthly plan to compare")
+            assertEquals("14 days free", card.trial)
+            assertEquals("Start my 14-day free trial", Paywall.callToAction(offer))
+            assertEquals(
+                "A subscription is required to use MacroDime. " +
+                    "14 days free, then ${usd(29.99)} a year. MacroDime Pro renews every year until you cancel. " +
+                    "Cancel in Google Play before the trial ends and you won't be charged.",
+                Paywall.disclosure(offer, Store.GooglePlay),
+            )
+            assertEquals(listOf("Today", "Day 12", "Day 14"), Paywall.timeline(offer, Store.GooglePlay).map { it.title })
+        }
+    }
+
+    /** Play prices each country itself; the paywall quotes that price in that currency, untouched. */
+    @Test
+    fun aLocalPriceIsQuotedAsPlayChargesIt() {
+        val rand = PlayOffers.select(
+            listOf(PlayOffers.Input("annual", "free-trial-14-days", "zar-trial", listOf(phase(0, "P2W", PlayOffers.FINITE_RECURRING, 1, "ZAR"), phase(549_990_000, "P1Y", currency = "ZAR")))),
+        )[ProPlan.Annual]
+        val offer = assertNotNull(rand).offer
+        assertEquals(549.99, offer.price)
+        assertEquals("ZAR", offer.currencyCode)
+        assertEquals("${DisplayFormat.currency(549.99, "ZAR")} a year", Paywall.priceLine(offer))
+    }
+
+    /**
+     * License testers get Google's test clock: a free trial of about 3 minutes
+     * and yearly renewals every 30 minutes, shown on Google Play's own purchase
+     * sheet. The app never states a trial in minutes, and a minutes period is
+     * never read as months (PT3M is three minutes; P3M would be three months).
+     * Should Play ever describe the trial that way, the trial offer is skipped
+     * and the yearly plan is sold at its price with no trial promised.
+     */
+    @Test
+    fun aTestAccountsThreeMinuteTrialIsNeverReadAsThreeMonths() {
+        assertNull(StorePeriod.parse("PT3M"))
+        val selected = PlayOffers.select(
+            listOf(
+                PlayOffers.Input("annual", null, "annual-base", listOf(yearly)),
+                PlayOffers.Input("annual", "free-trial-14-days", "annual-trial", listOf(phase(0, "PT3M", PlayOffers.FINITE_RECURRING, 1), yearly)),
+            ),
+        )[ProPlan.Annual]
+        assertEquals("annual-base", selected?.offerToken)
+        assertNull(selected?.offer?.freeTrial)
+        assertEquals("Subscribe for ${usd(29.99)} a year", selected?.offer?.let(Paywall::callToAction))
     }
 }

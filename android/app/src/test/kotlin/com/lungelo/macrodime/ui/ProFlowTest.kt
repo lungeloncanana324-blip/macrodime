@@ -35,6 +35,7 @@ import com.lungelo.macrodime.data.DemoData
 import com.lungelo.macrodime.data.prescription
 import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.Entitlement
+import com.lungelo.macrodime.domain.Paywall
 import com.lungelo.macrodime.domain.ProPlan
 import com.lungelo.macrodime.ui.theme.MacroDimeTheme
 import kotlinx.coroutines.runBlocking
@@ -135,6 +136,9 @@ class ProFlowTest {
         assertTrue(has("14 days free"))
         // One plan on sale: no savings badge to compare against, no radio to tap.
         assertTrue(!has("Save "))
+        // No close button, so the paywall says plainly that the app needs a subscription.
+        scrollPaywallTo("paywall-required")
+        assertTrue(has(Paywall.SUBSCRIPTION_REQUIRED))
         scrollPaywallTo("paywall-timeline")
         assertTrue(has("Day 12"))
         assertTrue(has("A reminder that your trial ends in 2 days"))
@@ -214,6 +218,24 @@ class ProFlowTest {
         scrollPaywallTo("paywall-restore")
         compose.onNodeWithTag("paywall-restore").performClick()
         waitForText(PlayBillingStore.NOTHING_TO_RESTORE)
+    }
+
+    /** A subscription Google Play put on hold is sent to Google Play to fix, never sold a second one. */
+    @Test
+    fun aSubscriptionOnHoldIsSentToGooglePlay() {
+        launch(PreviewSubscriptionStore(onHold = true))
+        onboard()
+        waitForText(Paywall.ON_HOLD_HEADLINE)
+        assertTrue(has("couldn't take your last payment"))
+        compose.onNodeWithTag("paywall-fix-payment").assertTextContains("Fix it in Google Play")
+        assertTrue(!hasTag("paywall-cta"), "nothing new is sold to someone on hold")
+        assertTrue(!hasTag("plan-Annual"))
+        assertTrue(!hasTag("tab-Plan"))
+        // Restore does not claim there is nothing to restore: there is, and it is on hold.
+        scrollPaywallTo("paywall-restore")
+        compose.onNodeWithTag("paywall-restore").performClick()
+        compose.waitForIdle()
+        assertTrue(!has(PlayBillingStore.NOTHING_TO_RESTORE))
     }
 
     /** Delete All My Data is reachable without paying, from the paywall's menu. */

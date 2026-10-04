@@ -19,8 +19,13 @@
  *    equivalent is small print, because Play's policy forbids leading a yearly
  *    plan with a monthly figure.
  *  - It cannot be closed, which both stores allow when the terms are stated in
- *    full. What must stay reachable does: restore, the privacy policy, the
- *    health statement and Delete All My Data, from the menu.
+ *    full, starting with the fact that the app needs a subscription (said
+ *    above the plans and again in the terms). What must stay reachable does:
+ *    restore, the privacy policy, the health statement and Delete All My Data,
+ *    from the menu.
+ *  - A subscription Google Play has put on hold (a failed payment, or a pause)
+ *    is not sold again: the paywall says what happened and opens Google Play,
+ *    where it is fixed.
  */
 package com.lungelo.macrodime.ui.paywall
 
@@ -194,6 +199,7 @@ fun PaywallScreen(
         onOpenPrivacy = { openExternal(context, HealthDisclaimer.PRIVACY_POLICY_URL) },
         onOpenHealth = onOpenHealth,
         onDeleteAll = onDeleteAll,
+        onManage = { openExternal(context, subscriptions.manageSubscriptionUrl) },
     )
 }
 
@@ -217,15 +223,18 @@ fun PaywallContent(
     onOpenPrivacy: () -> Unit,
     onOpenHealth: () -> Unit,
     onDeleteAll: () -> Unit,
+    onManage: () -> Unit,
 ) {
     val numbers = profile.numbers()
-    val offer = state.offers[selected]
+    val onHold = state.isOnHold
+    // Nothing is sold to someone on hold: the subscription they have is fixed in the store.
+    val offer = if (onHold) null else state.offers[selected]
     var isConfirmingDelete by rememberSaveable { mutableStateOf(false) }
     StatusBarOverPhoto()
 
     Scaffold(
         modifier = Modifier.testTag("paywall"),
-        bottomBar = { Footer(state, offer, store, onPurchase, onRetry, onDismissMessage) },
+        bottomBar = { Footer(state, offer, store, onPurchase, onRetry, onDismissMessage, onManage) },
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
@@ -249,12 +258,12 @@ fun PaywallContent(
             item {
                 Column(Modifier.padding(horizontal = 20.dp).contentWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        Paywall.headline(reason, savedSoFar),
+                        Paywall.headline(reason, savedSoFar, onHold),
                         style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier.testTag("paywall-headline"),
                     )
                     Text(
-                        Paywall.subheadline(numbers.calories, numbers.protein, numbers.allowance),
+                        if (onHold) Paywall.onHoldDetail(store) else Paywall.subheadline(numbers.calories, numbers.protein, numbers.allowance),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -263,12 +272,14 @@ fun PaywallContent(
             if (preview.any { !it.isEmpty }) {
                 item { TodayPreview(preview.filter { !it.isEmpty }, Modifier.padding(horizontal = 20.dp)) }
             }
-            item {
-                MacroCard(Modifier.padding(horizontal = 20.dp).contentWidth()) {
-                    Paywall.benefits.forEach { BenefitRow(it) }
+            if (!onHold) {
+                item {
+                    MacroCard(Modifier.padding(horizontal = 20.dp).contentWidth()) {
+                        Paywall.benefits.forEach { BenefitRow(it) }
+                    }
                 }
+                item { Plans(state, selected, onSelect, onRetry, Modifier.padding(horizontal = 20.dp)) }
             }
-            item { Plans(state, selected, onSelect, onRetry, Modifier.padding(horizontal = 20.dp)) }
             if (offer?.freeTrial != null) {
                 item { Timeline(offer, store, Modifier.padding(horizontal = 20.dp)) }
                 item { ReminderRow(remind, onRemindChange, Modifier.padding(horizontal = 20.dp)) }
@@ -407,6 +418,7 @@ private fun Footer(
     onPurchase: (ProPlan) -> Unit,
     onRetry: () -> Unit,
     onDismissMessage: () -> Unit,
+    onManage: () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.background, shadowElevation = 12.dp) {
         Column(
@@ -415,6 +427,12 @@ private fun Footer(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             state.message?.let { MessageLine(it, onDismissMessage) }
+            if (state.isOnHold) {
+                Button(onClick = onManage, modifier = Modifier.contentWidth().heightIn(min = 56.dp).testTag("paywall-fix-payment"), shape = CircleShape) {
+                    Text(Paywall.onHoldAction(store), style = MaterialTheme.typography.titleMedium)
+                }
+                return@Column
+            }
             val canBuy = offer != null && state.availability == StoreState.Availability.Ready && !state.isPurchasing
             if (offer != null || state.availability == StoreState.Availability.Connecting) {
                 Button(
@@ -459,8 +477,11 @@ private fun Plans(state: StoreState, selected: ProPlan, onSelect: (ProPlan) -> U
     val offers = ProPlan.entries.mapNotNull { state.offers[it] }
     Column(modifier.contentWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         when {
-            offers.isNotEmpty() -> offers.forEach { offer ->
-                PlanOption(Paywall.card(offer, state.offers[ProPlan.Monthly]), offer.plan == selected, isOnlyChoice = offers.size == 1) { onSelect(offer.plan) }
+            offers.isNotEmpty() -> {
+                Caption(Paywall.SUBSCRIPTION_REQUIRED, Modifier.testTag("paywall-required"))
+                offers.forEach { offer ->
+                    PlanOption(Paywall.card(offer, state.offers[ProPlan.Monthly]), offer.plan == selected, isOnlyChoice = offers.size == 1) { onSelect(offer.plan) }
+                }
             }
             state.availability == StoreState.Availability.Connecting -> MacroCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
