@@ -9,25 +9,79 @@
  * stand in for any other, so the engine proposed broccoli to carrots: macro
  * valid, and not food anybody would swap. SwapGroup answers the question the
  * engine actually needs answered, "what would a person accept in place of
- * this?" For six of the seven categories the answer is the category itself.
- * For vegetables it is a culinary family.
+ * this?" The answer is a culinary family. Vegetables were split first; since
+ * 2026-10-04 (Android) proteins, carbs, fats and dairy are too, because one
+ * pool per category had the engine offering 5 eggs for a salmon fillet, tuna
+ * in a yogurt bowl and cheddar for skyr. A hot main swaps with a hot main,
+ * mince with mince, canned fish with canned fish, beans with beans.
  *
  * The failure mode is deliberately one-sided. A vegetable with no family is
  * Unclassified, and Unclassified only ever matches itself, so forgetting to
  * classify a new ingredient costs a swap; it cannot produce a nonsense meal.
+ * The category-wide groups remain only as the default for a new food, and a
+ * catalogue test fails the build if any curated food is left in one.
  */
 package com.lungelo.macrodime.domain
 
 /** The set of ingredients that may be substituted for one another. */
 enum class SwapGroup(override val rawValue: String) : RawValued {
-    // Mirrors of FoodCategory: one group per category, so behaviour outside
-    // vegetables is unchanged.
+    // Mirrors of FoodCategory: the default for a food not yet given a family.
     ProteinAnchor("proteinAnchor"),
     CarbBase("carbBase"),
     FatSource("fatSource"),
     Fruit("fruit"),
     Dairy("dairy"),
     Condiment("condiment"),
+
+    // Protein families, by how the food is eaten rather than what it is.
+
+    /** Chicken, pork, steak, salmon, cod, shrimp, tofu: the centre of a hot plate. */
+    MainProtein("mainProtein"),
+
+    /** Ground beef: sauces, burgers, tacos. */
+    Mince("mince"),
+
+    /** Canned tuna and sardines: bowls, sandwiches, salads. */
+    PantryFish("pantryFish"),
+
+    /** Lentils, beans, chickpeas: stews, soups, bowls. */
+    Legume("legume"),
+
+    Egg("egg"),
+
+    /** Greek yogurt: breakfast and snacks, never a dinner. */
+    Yogurt("yogurt"),
+
+    ProteinPowder("proteinPowder"),
+
+    /** Sliced deli meat: sandwiches. */
+    DeliMeat("deliMeat"),
+
+    // Carb families.
+
+    /** Rice and quinoa. */
+    Grain("grain"),
+    Pasta("pasta"),
+    Potato("potato"),
+    Bread("bread"),
+    Oats("oats"),
+
+    // Fat families.
+
+    /** Cooking oils. */
+    Oil("oil"),
+
+    /** Peanut butter, nuts, seeds. */
+    NutAndSeed("nutAndSeed"),
+    Avocado("avocado"),
+
+    // Dairy families.
+
+    Milk("milk"),
+    Cheese("cheese"),
+
+    /** Cottage cheese and skyr. */
+    CulturedDairy("culturedDairy"),
 
     // Vegetable families. Culinary, not botanical: cabbage and spinach are both
     // leafy greens to a cook; broccoli and cauliflower are both brassicas.
@@ -70,6 +124,25 @@ enum class SwapGroup(override val rawValue: String) : RawValued {
             Fruit -> "Fruit"
             Dairy -> "Dairy"
             Condiment -> "Condiments"
+            MainProtein -> "Main Proteins"
+            Mince -> "Mince"
+            PantryFish -> "Canned Fish"
+            Legume -> "Beans & Lentils"
+            Egg -> "Eggs"
+            Yogurt -> "Yogurt"
+            ProteinPowder -> "Protein Powder"
+            DeliMeat -> "Deli Meat"
+            Grain -> "Grains"
+            Pasta -> "Pasta"
+            Potato -> "Potatoes"
+            Bread -> "Bread"
+            Oats -> "Oats"
+            Oil -> "Oils"
+            NutAndSeed -> "Nuts & Seeds"
+            Avocado -> "Avocado"
+            Milk -> "Milk"
+            Cheese -> "Cheese"
+            CulturedDairy -> "Cultured Dairy"
             LeafyGreen -> "Leafy Greens"
             Cruciferous -> "Brassicas"
             Root -> "Root Vegetables"
@@ -83,11 +156,12 @@ enum class SwapGroup(override val rawValue: String) : RawValued {
     /** The role this group plays in a meal, for anything that still groups by category. */
     val category: FoodCategory
         get() = when (this) {
-            ProteinAnchor -> FoodCategory.ProteinAnchor
-            CarbBase -> FoodCategory.CarbBase
-            FatSource -> FoodCategory.FatSource
+            ProteinAnchor, MainProtein, Mince, PantryFish, Legume, Egg, Yogurt, ProteinPowder, DeliMeat ->
+                FoodCategory.ProteinAnchor
+            CarbBase, Grain, Pasta, Potato, Bread, Oats -> FoodCategory.CarbBase
+            FatSource, Oil, NutAndSeed, Avocado -> FoodCategory.FatSource
             Fruit -> FoodCategory.Fruit
-            Dairy -> FoodCategory.Dairy
+            Dairy, Milk, Cheese, CulturedDairy -> FoodCategory.Dairy
             Condiment -> FoodCategory.Condiment
             LeafyGreen, Cruciferous, Root, Allium, Fruiting, Stem, MixedFrozen, Unclassified ->
                 FoodCategory.Vegetable
@@ -97,6 +171,10 @@ enum class SwapGroup(override val rawValue: String) : RawValued {
 
     /** The groups that take part in substitution at all. */
     val isSubstitutable: Boolean get() = this != Unclassified
+
+    /** True for the category-wide groups: a food here has not been given a culinary family yet. */
+    val isCategoryDefault: Boolean
+        get() = this == ProteinAnchor || this == CarbBase || this == FatSource || this == Dairy
 
     companion object {
         /**

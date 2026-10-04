@@ -124,22 +124,23 @@ class BudgetFoodEngineTest {
     }
 
     /**
-     * Parity with the iOS engine. The README prints the seven candidates the
-     * compiled Swift engine finds for the salmon portion alone; the port has to
-     * find the same seven, at the same servings, saving the same cents, inside
-     * the same drift. Not in the iOS suite: it exists because this is a port.
+     * Parity with the iOS engine, as far as the two still agree. The README
+     * prints the seven candidates the compiled Swift engine finds for the
+     * salmon portion alone. Since 2026-10-04 Android groups proteins into
+     * culinary families, so four of the seven (eggs, canned tuna, sardines,
+     * Greek yogurt: not things a person puts on a dinner plate in place of
+     * salmon) are no longer offered; iOS still offers them until it gets the
+     * same change. The three that remain are hot mains, and they must still
+     * match the compiled Swift engine to the cent: same servings, same saving,
+     * same drift. Not in the iOS suite: it exists because this is a port.
      */
     @Test
     fun salmonCandidatesMatchTheCompiledSwiftEngine() {
         data class Row(val servings: Double, val savings: Double, val drift: Double)
         val expected = mapOf(
-            "eggs-large" to Row(2.75, 4.42, 0.032),
             "chicken-drumsticks" to Row(1.25, 3.98, 0.035),
             "pork-shoulder" to Row(1.25, 3.96, 0.032),
-            "canned-tuna-water" to Row(1.00, 3.75, 0.046),
             "chicken-thighs" to Row(1.25, 3.69, 0.069),
-            "canned-sardines" to Row(1.50, 3.17, 0.040),
-            "greek-yogurt-nonfat" to Row(2.00, 3.10, 0.039),
         )
 
         val meal = salmonDinner()
@@ -154,10 +155,19 @@ class BudgetFoodEngineTest {
         }
     }
 
+    /**
+     * The rebalance mechanics, on their own. Salmon to tuna is the clearest
+     * case of a fat gap (about 49% short without the oil), but since culinary
+     * families tuna is not offered for salmon at all, so these two tests turn
+     * the families off: what they check is the arithmetic, not the menu.
+     */
+    private val anyGroupPolicy = SwapPolicy.DEFAULT.copy(restrictToSameSwapGroup = false)
+    private val anyGroupEngine = BudgetFoodEngine(catalog = FoodCatalog.reference, policy = anyGroupPolicy)
+
     /** Without the rebalance pass, salmon to tuna leaves the meal about 49% short on fat. */
     @Test
     fun substitutionWithoutRebalancingFailsTheFatGate() {
-        val policy = SwapPolicy.DEFAULT.copy(allowsRebalancing = false)
+        val policy = anyGroupPolicy.copy(allowsRebalancing = false)
         val plainEngine = BudgetFoodEngine(catalog = FoodCatalog.reference, policy = policy)
 
         val meal = salmonDinner()
@@ -168,7 +178,7 @@ class BudgetFoodEngineTest {
         assertNull(tunaWithout, "Tuna should fail the fat gate with no rebalance available")
 
         val tunaWith = assertNotNull(
-            engine.rankedReplacements(salmonPortion, meal).firstOrNull { it.replacement.food.id == "canned-tuna-water" },
+            anyGroupEngine.rankedReplacements(salmonPortion, meal).firstOrNull { it.replacement.food.id == "canned-tuna-water" },
             "Salmon to Canned Tuna must be offered once rebalancing is allowed",
         )
         assertFalse(tunaWith.rebalanced.isEmpty(), "The swap should have re-portioned the oil")
@@ -178,7 +188,7 @@ class BudgetFoodEngineTest {
     @Test
     fun rebalanceAdjustsTheFatSourceUpwards() {
         val meal = salmonDinner()
-        val options = engine.rankedReplacements(meal.portions.first(), meal)
+        val options = anyGroupEngine.rankedReplacements(meal.portions.first(), meal)
 
         val tuna = assertNotNull(options.firstOrNull { it.replacement.food.id == "canned-tuna-water" })
         val oil = assertNotNull(

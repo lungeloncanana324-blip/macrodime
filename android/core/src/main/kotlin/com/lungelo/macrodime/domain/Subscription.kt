@@ -107,8 +107,12 @@ enum class Store(val displayName: String, val cancelBeforeTrialEnds: String, val
     ),
 }
 
-/** Why the paywall is showing, which decides its headline. */
-enum class PaywallReason { AfterOnboarding, Planner, Groceries, Swaps, ProgressPhotos, Settings }
+/**
+ * Why the paywall is showing, which decides its headline. Since 2026-10-04
+ * there is no free tier: the paywall is the way into the app, straight after
+ * onboarding, and again for anyone whose trial or subscription has ended.
+ */
+enum class PaywallReason { AfterOnboarding, Returning }
 
 /** Everything the paywall says, from the store's offers and the user's own numbers. Copy lives here, tested, not in the screens. */
 object Paywall {
@@ -118,11 +122,14 @@ object Paywall {
     data class Benefit(val title: String, val detail: String)
 
     val benefits = listOf(
-        Benefit("Meal plans that fit your budget", "Every day planned to your calorie and protein targets, priced against your allowance."),
+        Benefit("A week of meals, planned", "Built for your calories, protein and diet the moment you finish setup."),
+        Benefit("Priced to your budget", "Every meal costed against your daily allowance before you shop."),
         Benefit("Cheaper swaps", "Same macros within 10%, cheaper ingredients, one tap to apply."),
-        Benefit("A grocery list that builds itself", "From the week you planned, in store-walk order."),
-        Benefit("Progress photos", "Kept beside your waist and weight, on your phone only."),
+        Benefit("A shopping list that builds itself", "From the week you planned, in store-walk order."),
     )
+
+    /** Beside the button whenever the store offers a trial: the line that answers the first worry. */
+    const val NO_PAYMENT_TODAY = "No payment today"
 
     /** One plan, as its card on the paywall reads. */
     data class PlanCard(
@@ -181,15 +188,31 @@ object Paywall {
         } ?: "$price. $renews ${store.cancelAnyTime}"
     }
 
-    /** What happens when, for an offer with a trial. Empty when there is no trial to explain. */
+    /**
+     * What happens when, for an offer with a trial: the plan unlocks today, a
+     * reminder comes [EntitlementPolicy.REMINDER_DAYS] days before the end
+     * (the app keeps that promise with a notification and a card on Today),
+     * and the charge comes when the trial ends unless it was cancelled. Empty
+     * when there is no trial to explain.
+     */
     fun timeline(offer: ProOffer, store: Store): List<TimelineStep> {
         val trial = offer.freeTrial ?: return emptyList()
-        val endDay = if (trial.unit == StorePeriod.Span.Day || trial.unit == StorePeriod.Span.Week) "Day ${trial.phrase.substringBefore(' ')}" else "After ${trial.phrase}"
-        return listOf(
-            TimelineStep("Today", "Everything in Pro, free."),
-            TimelineStep(endDay, "Your trial ends. ${store.cancelBeforeTrialEnds}"),
-            TimelineStep("Then", "${priceLine(offer)}, renewing ${offer.plan.every} until you cancel."),
-        )
+        val days = if (trial.unit == StorePeriod.Span.Day || trial.unit == StorePeriod.Span.Week) trial.phrase.substringBefore(' ').toInt() else null
+        val reminderDay = days?.minus(EntitlementPolicy.REMINDER_DAYS)
+        return buildList {
+            add(TimelineStep("Today", "Your full plan unlocks. $NO_PAYMENT_TODAY."))
+            if (days == null) {
+                add(TimelineStep("Before it ends", "A reminder that your trial is ending."))
+            } else if (reminderDay != null && reminderDay >= 1) {
+                add(TimelineStep("Day $reminderDay", "A reminder that your trial ends in ${EntitlementPolicy.REMINDER_DAYS} days."))
+            }
+            add(
+                TimelineStep(
+                    if (days == null) "After ${trial.phrase}" else "Day $days",
+                    "${priceLine(offer)} starts, renewing ${offer.plan.every}. ${store.cancelBeforeTrialEnds}",
+                ),
+            )
+        }
     }
 
     /**
@@ -197,39 +220,15 @@ object Paywall {
      * whose swaps have already saved money (which means they had Pro, in a
      * trial) is shown that figure first: their own result, not a promise.
      */
-    fun headline(reason: PaywallReason, savedSoFar: String?, dailyAllowance: String): String = when {
+    fun headline(reason: PaywallReason, savedSoFar: String?): String = when {
         savedSoFar != null -> "Your swaps have saved you $savedSoFar"
-        reason == PaywallReason.AfterOnboarding -> "Your plan is ready"
-        reason == PaywallReason.Planner -> "Plan meals that fit $dailyAllowance a day"
-        reason == PaywallReason.Groceries -> "Let your grocery list build itself"
-        reason == PaywallReason.Swaps -> "Pay less for the same macros"
-        reason == PaywallReason.ProgressPhotos -> "See the change BMI can't show"
-        else -> PRO_NAME
+        reason == PaywallReason.AfterOnboarding -> "Your week is ready"
+        else -> "Welcome back"
     }
 
-    /** Below the headline: what Pro does with the targets they just set. */
+    /** Below the headline: what the plan does with the targets they just set. */
     fun subheadline(calories: String, protein: String, dailyAllowance: String): String =
-        "$calories and $protein of protein a day, planned within $dailyAllowance, with a grocery list to match."
-
-    /** What a locked screen says it would do, in the person's own numbers. */
-    fun lockedDetail(reason: PaywallReason, calories: String, protein: String): String = when (reason) {
-        PaywallReason.Groceries ->
-            "Pro turns the week you plan into one shopping list, in the order you walk the store, with what you already have kept off it."
-        PaywallReason.Swaps ->
-            "Pro checks every meal for cheaper ingredients that keep your macros within 10%, and applies a swap in one tap."
-        PaywallReason.ProgressPhotos ->
-            "Pro keeps progress photos beside your waist and weight, on this phone only, so you can see what the scale misses."
-        else ->
-            "Pro plans every meal to your $calories and $protein of protein, prices each one against your allowance, and finds cheaper swaps when it can."
-    }
-
-    /** The card a free account sees on Today. */
-    fun upgradeTitle(dailyAllowance: String): String = "Plan today within $dailyAllowance"
-
-    const val UPGRADE_DETAIL = "Pro plans your meals to these targets, finds cheaper swaps and builds your grocery list."
-
-    /** Under a locked screen's button, which opens the paywall rather than charging anything. */
-    fun unlockCaption(store: Store): String = "You see the full terms before anything starts. ${store.cancelAnyTime}"
+        "$calories and $protein of protein a day, planned within $dailyAllowance, with a shopping list to match."
 }
 
 /**
@@ -284,6 +283,18 @@ object EntitlementPolicy {
         val endsAt = entitlement.trialEndsAtMillis ?: return null
         if (!entitlement.isPro || endsAt <= nowMillis) return null
         return ceil((endsAt - nowMillis).toDouble() / DAY_MILLIS).toInt()
+    }
+
+    /**
+     * When the trial-end notification should fire: [REMINDER_DAYS] days before
+     * the trial ends, if that is still ahead. Null for anyone not in a trial
+     * that will turn into a charge: a cancelled trial ends on its own and owes
+     * nobody a warning.
+     */
+    fun reminderAt(entitlement: Entitlement, nowMillis: Long): Long? {
+        val endsAt = entitlement.trialEndsAtMillis ?: return null
+        if (!entitlement.isPro || !entitlement.willRenew) return null
+        return (endsAt - REMINDER_DAYS * DAY_MILLIS).takeIf { it > nowMillis }
     }
 
     /** True in the last [REMINDER_DAYS] days of a trial: the moment to say plainly what happens next. */

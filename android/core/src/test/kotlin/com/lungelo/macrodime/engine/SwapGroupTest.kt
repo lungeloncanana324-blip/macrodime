@@ -57,12 +57,52 @@ class SwapGroupTest {
         }
     }
 
+    /**
+     * Since 2026-10-04 proteins, carbs, fats and dairy have culinary families
+     * too. A curated food left in a category-wide group would swap with every
+     * other food in its category, which is the bug the families fix.
+     */
     @Test
-    fun nonVegetableGroupsMirrorTheirCategory() {
+    fun everyProteinCarbFatAndDairyHasACulinaryFamily() {
         for (item in FoodCatalog.reference) {
-            if (item.category == FoodCategory.Vegetable) continue
-            assertEquals(SwapGroup.defaultFor(item.category), item.swapGroup, "${item.name} should be grouped by its category")
+            assertFalse(item.swapGroup.isCategoryDefault, "${item.name} has no culinary family (${item.swapGroup})")
         }
+    }
+
+    // Swaps a person would accept
+
+    private fun offeredFor(id: String, slot: MealSlot, vararg others: String): Set<String> {
+        val meal = MealItem("Test", slot, (listOf(id) + others).map { Portion(food(it)) })
+        return engine.rankedReplacements(meal.portions.first(), meal).map { it.replacement.food.id }.toSet()
+    }
+
+    @Test
+    fun aSalmonDinnerIsNeverOfferedEggsYogurtOrCannedFish() {
+        val offered = offeredFor("salmon-fillet", MealSlot.Dinner, "white-rice", "fresh-broccoli", "olive-oil")
+        assertTrue(offered.isNotEmpty(), "salmon should still have cheaper hot mains to swap to")
+        for (wrong in listOf("eggs-large", "greek-yogurt-nonfat", "canned-tuna-water", "canned-sardines")) {
+            assertFalse(wrong in offered, "salmon was offered $wrong")
+        }
+        for (id in offered) assertEquals(SwapGroup.MainProtein, food(id).swapGroup, "salmon was offered $id")
+    }
+
+    @Test
+    fun aYogurtBowlIsNeverOfferedFishOrMeat() {
+        val offered = offeredFor("greek-yogurt-nonfat", MealSlot.Breakfast, "frozen-berries", "sunflower-seeds")
+        for (id in offered) assertEquals(SwapGroup.Yogurt, food(id).swapGroup, "yogurt was offered $id")
+    }
+
+    @Test
+    fun cannedTunaIsNeverOfferedEggs() {
+        val offered = offeredFor("canned-tuna-water", MealSlot.Lunch, "white-rice", "carrots")
+        assertFalse("eggs-large" in offered)
+        for (id in offered) assertEquals(SwapGroup.PantryFish, food(id).swapGroup, "tuna was offered $id")
+    }
+
+    @Test
+    fun dairyNeverSwapsAcrossFamilies() {
+        val offered = offeredFor("skyr", MealSlot.Snack, "frozen-berries")
+        assertFalse("cheddar-block" in offered || "whole-milk" in offered, "skyr was offered $offered")
     }
 
     // The reported bug
@@ -167,17 +207,18 @@ class SwapGroupTest {
         assertTrue(withMystery.rankedReplacements(other.portions[0], other).isEmpty())
     }
 
+    /** The README's salmon dinner still saves money, now with a hot main rather than a tin. */
     @Test
     fun proteinSwapFromTheReadmeIsStillOffered() {
         val meal = salmonDinner()
         val salmon = assertNotNull(meal.portions.firstOrNull { it.food.id == "salmon-fillet" })
 
-        val tuna = assertNotNull(
-            engine.rankedReplacements(salmon, meal).firstOrNull { it.replacement.food.id == "canned-tuna-water" },
-            "Salmon should still be swappable for canned tuna",
+        val thighs = assertNotNull(
+            engine.rankedReplacements(salmon, meal).firstOrNull { it.replacement.food.id == "chicken-thighs" },
+            "Salmon should still be swappable for chicken thighs",
         )
-        assertEquals(salmon.id, tuna.original.id)
-        assertTrue(tuna.savings > 0)
+        assertEquals(salmon.id, thighs.original.id)
+        assertTrue(thighs.savings > 0)
 
         val swap = assertNotNull(engine.bestSwap(meal))
         assertTrue(swap.swapped.cost < meal.cost)

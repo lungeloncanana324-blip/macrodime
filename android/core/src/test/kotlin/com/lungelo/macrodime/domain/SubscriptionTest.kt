@@ -171,26 +171,32 @@ class SubscriptionTest {
             }
             for (text in everything) assertFalse(dashes.any { it in text }, "a dash in: $text")
         }
-        for (reason in PaywallReason.entries) assertFalse(dashes.any { it in Paywall.headline(reason, null, "$9.00") })
+        for (reason in PaywallReason.entries) assertFalse(dashes.any { it in Paywall.headline(reason, null) })
         for (benefit in Paywall.benefits) assertFalse(dashes.any { it in benefit.title + benefit.detail })
     }
 
+    /** Today, the reminder two days before the end, then the charge: the promise the app keeps. */
     @Test
     fun theTimelineExplainsTheTrialAndIsEmptyWithoutOne() {
         val steps = Paywall.timeline(annual, Store.GooglePlay)
-        assertEquals(listOf("Today", "Day 14", "Then"), steps.map { it.title })
-        assertTrue("before the trial ends" in steps[1].detail)
-        assertEquals("${usd(29.99)} a year, renewing every year until you cancel.", steps[2].detail)
-        assertEquals("After 1 month", Paywall.timeline(annual.copy(freeTrial = StorePeriod.parse("P1M")), Store.GooglePlay)[1].title)
+        assertEquals(listOf("Today", "Day 12", "Day 14"), steps.map { it.title })
+        assertTrue("No payment today" in steps[0].detail)
+        assertEquals("A reminder that your trial ends in 2 days.", steps[1].detail)
+        assertTrue(steps[2].detail.startsWith("${usd(29.99)} a year starts, renewing every year."))
+        assertTrue("before the trial ends" in steps[2].detail)
+        val month = Paywall.timeline(annual.copy(freeTrial = StorePeriod.parse("P1M")), Store.GooglePlay)
+        assertEquals(listOf("Today", "Before it ends", "After 1 month"), month.map { it.title })
+        // A trial too short for a reminder two days out gets no reminder step, rather than "Day 0".
+        assertEquals(listOf("Today", "Day 2"), Paywall.timeline(annual.copy(freeTrial = StorePeriod.parse("P2D")), Store.GooglePlay).map { it.title })
         assertTrue(Paywall.timeline(annualNoTrial, Store.GooglePlay).isEmpty())
         assertTrue(Paywall.timeline(monthly, Store.AppStore).isEmpty())
     }
 
     @Test
     fun theHeadlineLeadsWithWhatTheUserHasAlreadySaved() {
-        assertEquals("Your swaps have saved you $4.50", Paywall.headline(PaywallReason.Planner, "$4.50", "$9.00"))
-        assertEquals("Your plan is ready", Paywall.headline(PaywallReason.AfterOnboarding, null, "$9.00"))
-        assertEquals("Plan meals that fit $9.00 a day", Paywall.headline(PaywallReason.Planner, null, "$9.00"))
+        assertEquals("Your swaps have saved you $4.50", Paywall.headline(PaywallReason.Returning, "$4.50"))
+        assertEquals("Your week is ready", Paywall.headline(PaywallReason.AfterOnboarding, null))
+        assertEquals("Welcome back", Paywall.headline(PaywallReason.Returning, null))
     }
 
     // What the app remembers about Pro
@@ -234,6 +240,17 @@ class SubscriptionTest {
         assertNull(EntitlementPolicy.trialDaysLeft(trial(-1), now))
         assertNull(EntitlementPolicy.trialDaysLeft(trial(day).copy(isPro = false), now))
         assertNull(EntitlementPolicy.trialDaysLeft(subscriber, now))
+    }
+
+    /** The notification the paywall promises: two days before the end, only for a trial that will charge. */
+    @Test
+    fun theReminderNotificationIsDueTwoDaysBeforeAChargeAndNeverAfterACancellation() {
+        val trial = Entitlement(isPro = true, plan = ProPlan.Annual, verifiedAtMillis = now, trialEndsAtMillis = now + 14 * day)
+        assertEquals(now + 12 * day, EntitlementPolicy.reminderAt(trial, now))
+        assertEquals(null, EntitlementPolicy.reminderAt(trial.copy(willRenew = false), now), "a cancelled trial is not warned of a charge")
+        assertEquals(null, EntitlementPolicy.reminderAt(trial, now + 13 * day), "the reminder time has passed")
+        assertEquals(null, EntitlementPolicy.reminderAt(subscriber, now), "a paying subscriber is in no trial")
+        assertEquals(null, EntitlementPolicy.reminderAt(Entitlement.FREE, now))
     }
 
     @Test

@@ -830,6 +830,57 @@ object FoodCatalog {
         )
     }
 
+    /**
+     * The culinary family of every protein, carb, fat and dairy food. Vegetables
+     * carry theirs in the declaration; fruit and condiments keep one group each.
+     */
+    private val swapGroupTable: Map<String, SwapGroup> = mapOf(
+        "chicken-thighs" to SwapGroup.MainProtein,
+        "chicken-drumsticks" to SwapGroup.MainProtein,
+        "chicken-breast" to SwapGroup.MainProtein,
+        "pork-shoulder" to SwapGroup.MainProtein,
+        "sirloin-steak" to SwapGroup.MainProtein,
+        "salmon-fillet" to SwapGroup.MainProtein,
+        "cod-fillet" to SwapGroup.MainProtein,
+        "shrimp" to SwapGroup.MainProtein,
+        "firm-tofu" to SwapGroup.MainProtein,
+        "ground-beef-80-20" to SwapGroup.Mince,
+        "ground-beef-93-7" to SwapGroup.Mince,
+        "canned-tuna-water" to SwapGroup.PantryFish,
+        "canned-sardines" to SwapGroup.PantryFish,
+        "dried-lentils" to SwapGroup.Legume,
+        "canned-black-beans" to SwapGroup.Legume,
+        "canned-chickpeas" to SwapGroup.Legume,
+        "eggs-large" to SwapGroup.Egg,
+        "eggs-pasture-organic" to SwapGroup.Egg,
+        "greek-yogurt-nonfat" to SwapGroup.Yogurt,
+        "whey-isolate" to SwapGroup.ProteinPowder,
+        "turkey-breast-deli" to SwapGroup.DeliMeat,
+
+        "white-rice" to SwapGroup.Grain,
+        "brown-rice" to SwapGroup.Grain,
+        "quinoa" to SwapGroup.Grain,
+        "dried-pasta" to SwapGroup.Pasta,
+        "potatoes" to SwapGroup.Potato,
+        "sweet-potato" to SwapGroup.Potato,
+        "whole-wheat-bread" to SwapGroup.Bread,
+        "sourdough-bread" to SwapGroup.Bread,
+        "sprouted-grain-bread" to SwapGroup.Bread,
+        "rolled-oats" to SwapGroup.Oats,
+
+        "canola-oil" to SwapGroup.Oil,
+        "olive-oil" to SwapGroup.Oil,
+        "peanut-butter" to SwapGroup.NutAndSeed,
+        "almonds" to SwapGroup.NutAndSeed,
+        "sunflower-seeds" to SwapGroup.NutAndSeed,
+        "avocado" to SwapGroup.Avocado,
+
+        "whole-milk" to SwapGroup.Milk,
+        "cheddar-block" to SwapGroup.Cheese,
+        "cottage-cheese" to SwapGroup.CulturedDairy,
+        "skyr" to SwapGroup.CulturedDairy,
+    )
+
     /** Active preparation time in minutes, where the category default is wrong. */
     private val prepTable: Map<String, Int> = mapOf(
         // Proteins
@@ -906,10 +957,10 @@ object FoodCatalog {
     private fun annotated(food: FoodSnapshot): FoodSnapshot = food.annotated(
         traits = traitTable[food.id] ?: FoodTraits.NONE,
         prepMinutes = prepTable[food.id] ?: defaultPrepMinutes(food.category, food.section),
-    )
+    ).let { annotated -> swapGroupTable[annotated.id]?.let { annotated.copy(swapGroup = it) } ?: annotated }
 
     /** Ids named in the annotation tables, for the catalogue tests to audit. */
-    val annotatedIds: Set<String> get() = traitTable.keys + prepTable.keys
+    val annotatedIds: Set<String> get() = traitTable.keys + prepTable.keys + swapGroupTable.keys
 
     // The catalogue itself. Declared after every table it reads, because Kotlin
     // initialises an object's properties in source order.
