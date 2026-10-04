@@ -63,11 +63,13 @@ MacroDime joins two things that are usually decided separately: what your body n
 
 Your targets come from published science. Basal metabolic rate by Mifflin-St Jeor, standard activity multipliers, a 20% deficit for fat loss or an 8% surplus for lean gaining, protein held at 2.0 g per kg while cutting, and fat no lower than 20% of calories. Every override the engine makes to protect those rules is reported rather than hidden.
 
+Your week is planned for you. When you finish setting up, MacroDime builds seven days of simple meals for your calories, protein, food budget and diet, with a shopping list to match. Change anything you like; any day you clear can be planned again with one tap.
+
 Your plan is built from a curated catalogue of 57 ingredients, and every meal shows its cost next to its macros. Where the US government publishes an average retail price (the Bureau of Labor Statistics, and USDA fruit and vegetable prices), that is the price you see. The rest are estimates, and Settings says how many of each there are. Prices are built into the app, so checking one never sends anything anywhere.
 
 The low-cost swap
 
-Pick any meal and MacroDime finds a cheaper version of it that keeps calories, protein, carbohydrate and fat within 10% of where they were. A straight substitution cannot hold four macros at once, so the engine also re-portions the fat and carbs already in the meal to close the gap. Swapping fresh salmon for canned tuna in a salmon dinner costs 55% less and lands within 5% on every macro.
+Pick any meal and MacroDime finds a cheaper version of it that keeps calories, protein, carbohydrate and fat within 10% of where they were. Swaps stay with food you would actually put on that plate: a hot main for a hot main, beans for beans, never tuna in your yogurt. A straight substitution cannot hold four macros at once, so the engine also re-portions the fat and carbs already in the meal to close the gap. Swap the salmon in a salmon dinner for chicken thighs and the meal costs far less, with every macro still within 10%.
 
 Eat what you actually eat
 
@@ -80,6 +82,10 @@ MacroDime audits its own plan and names the gaps: protein short, budget overrun,
 What it does not do
 
 No account. No ads. No analytics. No internet permission at all. Everything you enter stays on your phone, and Delete All My Data removes all of it.
+
+Subscription
+
+MacroDime starts with a 14-day free trial of MacroDime Pro. Nothing is charged on the day you start, the app reminds you two days before the trial ends, and then MacroDime Pro renews every year at the price shown in Google Play until you cancel. Cancel in Google Play before the trial ends and you are not charged. A subscription is required to use the meal plan after the trial.
 
 MacroDime estimates energy needs from population averages. Your real metabolic rate can differ by 10% or more. It is not a medical device, it does not diagnose or treat anything, and it is for adults aged 18 and over. Prices are US supermarket averages; you can show them in your own currency at an exchange rate you enter.
 ```
@@ -181,12 +187,21 @@ reporting), the form must be updated before that build is released.
 First release. Macro targets from your body and goal, a daily meal plan priced against the allowance you set, low-cost swaps that keep your macros within 10%, and a grocery list built from the week you planned. Everything stays on your phone.
 ```
 
+Version 1.2.0 (version code 3), the first with the planned week:
+
+```
+Your week is now planned for you the moment you finish setting up: simple meals for your calories, protein, budget and diet, with a shopping list to match. A new look built around the food, a 14-day free trial with a reminder before it ends, and cheaper swaps that stay with food you would actually put on the plate.
+```
+
 ## Pricing and MacroDime Pro
 
 The app is **Free** in Play Console (a free app can never become paid, but it
-can sell subscriptions), and sells one subscription, MacroDime Pro, with a
-14-day free trial on the yearly plan. Why, and what is free and what is Pro:
-`docs/MONETISATION.md`.
+can sell subscriptions), and sells one subscription, MacroDime Pro: a 14-day
+free trial that renews into the yearly plan. Since 2026-10-04 there is no free
+tier: after onboarding the paywall is the way into the app. Why:
+`docs/MONETISATION.md`. Because a subscription is required to use the app,
+Play's policy requires the listing to say so; the full description's
+Subscription paragraph does.
 
 ### Setting it up in Play Console, in this order
 
@@ -204,20 +219,30 @@ can sell subscriptions), and sells one subscription, MacroDime Pro, with a
    | --- | --- |
    | Product ID | `pro` |
    | Name | MacroDime Pro |
-   | Base plan 1 | ID `annual`, auto-renewing, billing period 1 year, $29.99 |
-   | Base plan 2 | ID `monthly`, auto-renewing, billing period 1 month, $5.99 |
+   | Base plan | ID `annual`, auto-renewing, billing period 1 year, $29.99 |
 
    Set the local prices Play suggests, or round them by hand (South Africa,
-   for example). Activate both base plans.
+   for example). Activate the base plan. Create no monthly base plan: the
+   trial renews into the yearly plan. The app still supports one (ID
+   `monthly`, 1 month, $5.99, no trial) and shows it as a second choice the
+   moment it is active, so it can be added later without a new build.
 4. **Add the trial offer** to the `annual` base plan: Add offer, ID
    `free-trial-14-days`, eligibility **New customer acquisition: never had
    this subscription**, one phase: **Free trial, 2 weeks** (or 14 days).
-   Activate it. Do not add a trial to `monthly`: the app sells the monthly
-   plan without one, and ignores any offer it could not describe honestly.
-5. **License testers.** Setup, License testing: add your Gmail. Purchases by
-   license testers are never charged, and their subscriptions renew every few
-   minutes instead of every year, so the whole trial and renewal cycle can be
-   watched in an hour.
+   Activate it. If a monthly plan is ever added, give it no trial: the app
+   sells the monthly plan without one, and ignores any offer it could not
+   describe honestly.
+5. **License testers.** Settings (the account level, not the app), License
+   testing: add your Gmail **and every closed tester's**. With the paywall as
+   the way in, a tester who is not a license tester must start a real trial
+   with a real payment method and remember to cancel it. License testers pay
+   nothing with Google's test card, but Google runs their subscriptions on a
+   fast clock (verified 2026-10-04 in Google's billing test documentation):
+   the free trial lasts 3 minutes, the yearly plan renews every 30 minutes,
+   and after 6 renewals the subscription ends. So roughly every 3.5 hours a
+   tester meets the paywall again and taps Start with the test card, free.
+   Tell testers this before the 14 days start, so they do not read it as a
+   bug.
 
 The app reads every price, the trial's length and the eligibility from Play,
 so changing a price or the trial later needs no new build.
@@ -226,9 +251,9 @@ so changing a price or the trial later needs no new build.
 
 | Do this | Expect |
 | --- | --- |
-| Finish onboarding | The paywall opens, quoting your own targets and budget, with Yearly selected and "Start my 14-day free trial" |
-| Tap Monthly | The trial disappears from the button, the timeline and the terms |
-| Start the trial | Google Play's own purchase sheet, showing the trial and the price after it; after confirming, the planner and grocery list open |
+| Open the app | The photo intro: "Hit your macros on a real budget.", then what has been getting in the way, then the answers to what you picked |
+| Finish onboarding | "Your week is ready": your own targets and budget, today's planned meals with their cost, Yearly with "14 days free", the timeline (today, day 12 reminder, day 14) and "Start my 14-day free trial" over "No payment today". No close button |
+| Start the trial | On Android 13 and later, the notification permission first (for the reminder), then Google Play's own purchase sheet showing the trial and the price after it; after confirming, Today opens on the planned week |
 | Settings | "Pro, yearly", the date the trial ends, Manage subscription |
 | Manage subscription | Opens Google Play's subscription page for MacroDime |
 | Cancel in Play, return to the app | Pro stays until the trial ends; Today's reminder (last two days) says you won't be charged |

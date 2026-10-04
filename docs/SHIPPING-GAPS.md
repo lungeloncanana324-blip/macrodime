@@ -28,7 +28,45 @@ build and sign it is in `android/README.md`; every Play Console answer is in
 | P6 | **Public contact email** | Play shows it on the listing | Lungelo | 5 min |
 | P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
 | P8 | **MacroDime Pro in Play Console** | Added 2026-10-03, built and tested in the app. Needs a payments profile, then a bundle with Play Billing uploaded (version code 2 or higher; version code 1 has none), then the subscription `pro` with base plans `annual` and `monthly` and the 14-day trial offer on `annual`, then license testers. Exact steps and ids: `docs/play-store-listing.md`, Pricing and MacroDime Pro. Until the subscription exists the paywall says plans could not be loaded | Lungelo | 45 min |
+| P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and restart it with the test card. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
 | P9 | **Data safety with Play Billing** | Google's definitions support keeping "No data collected" (the app reads only whether a subscription is active, on the phone, and sends nothing), but it is a judgement on Google's wording; the cautious alternative is in `docs/play-store-listing.md` | Lungelo | 10 min |
+
+### 2026-10-04: the planned week, the trial-only paywall, the new look (Android)
+
+Lungelo's direction: the free plan is a 14-day trial that renews into the
+yearly plan; onboarding shows the app's value and the person's pain points
+before Welcome; the look is sleek and food focused. What was built, and why:
+
+- **The app now plans meals.** It never did: a new user opened an empty
+  planner, and the paywall's "every day planned" overstated the app.
+  `engine/PlanGenerator.kt` builds a week from hand-written meal templates,
+  filtered by the dietary profile, portioned to the targets, balanced across
+  the day and kept inside the allowance. Onboarding plans seven days; any
+  empty day offers "Plan this day for me". 16 adversarial tests run every
+  pattern, exclusion, cooking effort and schedule.
+- **Swaps stay culinary.** The swap engine treated every protein as one pool:
+  its top swap for a salmon dinner was 5 eggs, and Greek yogurt for tuna in a
+  breakfast bowl. Proteins, carbs, fats and dairy now have culinary families,
+  as vegetables already did (`SwapGroup`), with a test that fails the build if
+  a food is left without one.
+- **The paywall is the way in**, after the intro, the questions and the planned
+  week: today's real meals and cost, the timeline with a day-12 reminder,
+  "No payment today", the yearly price leading. The reminder is real
+  (`billing/TrialReminder.kt`, a local notification; POST_NOTIFICATIONS and
+  RECEIVE_BOOT_COMPLETED join the permission guard's allowed list).
+- **The intro**: a full-photo hook, "What's been getting in the way?" (five
+  pains, pick any), and the answers to what was picked (`domain/Onboarding.kt`).
+- **The look**: ink and paper with basil as the one accent, Plus Jakarta Sans
+  (bundled, SIL Open Font License in `assets/licenses`), and eight food
+  photographs generated for the app (no people, no lettering), on the intro,
+  the paywall and every meal.
+
+**What iOS no longer matches** (port when iOS work resumes, each with its
+tests): the plan generator, the culinary families (and with them the README's
+salmon table, which still lists the cross-family swaps), the trial-only
+paywall and the reminder notification, the intro screens, and the theme. Until
+then the Kotlin parity test checks only the three salmon swaps both engines
+still agree on.
 
 ### What is verified, and by what
 
@@ -124,7 +162,7 @@ families) is the pattern if it needs tightening.
 | 21 | **30 of 57 prices are still estimates** | Low, improved 2026-09-26 | 27 foods now carry official averages: 11 from BLS monthly data, 16 from USDA ERS fruit and vegetable prices carried forward with the CPI. `scripts/update_prices.py` writes them into `SourcedPrices.swift` at build time and `prices.yml` refreshes them on the 20th of each month, so the app still never goes online. The rest (fish, oils, nuts, most dairy, specialty breads) have no public average; a store API such as Kroger's would cover them, but only through a server, and it would change the App Privacy answers. A free `BLS_API_KEY` secret makes the monthly job independent of the shared no-key quota |
 | 17 | **No accessibility audit** | Low | Labels exist on rings, meters and cards. Largest Dynamic Type, and VoiceOver on the planner, have never been checked by a human |
 | 18 | **No undo for a swap** | Low | A swap applies immediately. The engine is conservative (10% macro tolerance) but a mistake has no one-tap reversal |
-| 19 | **No way to charge for it** | Built 2026-10-03, untested against a store | Revised 2026-10-03: the launch build carries MacroDime Pro, yearly with a 14-day free trial and monthly with none, paywall after onboarding, Today and weight logging free. Android (Play Billing 9.1.0) passes 29 core and 10 UI tests with a preview store; the iOS twin (StoreKit 2) is compiled and tested only by `ios.yml`. Neither has spoken to a real store: Play needs P8 above, Apple needs the Paid Applications Agreement. Reasoning, prices and the sandbox test list: `docs/MONETISATION.md` |
+| 19 | **No way to charge for it** | Built 2026-10-03; trial-only since 2026-10-04 (Android); untested against a store | Revised 2026-10-03: the launch build carries MacroDime Pro, yearly with a 14-day free trial and monthly with none, paywall after onboarding, Today and weight logging free. Android (Play Billing 9.1.0) passes 29 core and 10 UI tests with a preview store; the iOS twin (StoreKit 2) is compiled and tested only by `ios.yml`. Neither has spoken to a real store: Play needs P8 above, Apple needs the Paid Applications Agreement. Reasoning, prices and the sandbox test list: `docs/MONETISATION.md` |
 | 20 | **Quantities read like arithmetic** | Fixed 2026-09-26 | The first screenshots showed `1.5 × 2 large eggs` and `1 × 1 can (142 g drained)`. `ServingMeasure` now reads each serving into a count, unit and noun (derived from the stored text, so no schema change) and multiplies that: `3 large eggs`, `1¼ cans (178 g drained)`, `1.2 kg raw`. Every catalogue serving must parse and render back unchanged, or `ServingMeasureTests` fails. Settings' `1783 kcal` is grouped now too. Open: a grocery line can still ask for `1¼ cans`, which nobody can buy; rounding countables up in the trolley is a product decision |
 | 22 | **Totals can miss a cent against the lines above them** | Medium, both platforms | Found 2026-10-02 in the first Android emulator screenshots, which are also the Play screenshots. The demo breakfast lists $0.22, $0.57 and $0.27 under a $1.05 header (the lines add to $1.06), and the grocery Produce section reads $0.91 over $0.65 and $0.27. Each line is rounded for display, while totals sum the unrounded costs. In a budgeting app a column that does not add up reads as a bug. **Fixed 2026-10-03, both platforms.** Rounding in the engine, the first idea, would not have cured it: the app converts at display time, so a rand column rounds again and can still miss a cent. The rule is now enforced where figures are shown, in the shown currency: `CurrencySettings.shown` rounds a line to the currency's smallest unit (one ISO minor-units table, read by both the rounding and the formatter), and every total over lines (meal headers, the day's spend and what is left, grocery sections and summary, swap savings and each step of a swap) is the sum of its lines as shown. The engines and their pinned figures are untouched. Tests on both platforms: the screenshot breakfast, rand, yen and dinar columns, every tenth of a cent checked against exact decimal rounding, 2,000 random columns in five currencies checked in whole smallest units, and a real swap whose steps add up to its title. Verified in CI: `ios.yml` run `37075140978` at `272dba3` built the app and passed 144 tests, SwiftPM and in-app, every new one by name |
 

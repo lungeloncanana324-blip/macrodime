@@ -1,6 +1,6 @@
 # MacroDime privacy policy
 
-Last updated: 3 October 2026
+Last updated: 4 October 2026
 
 MacroDime is a nutrition and food budgeting app for iPhone and Android. This
 policy covers both, and describes what the app does with your information. It is
@@ -33,14 +33,21 @@ Looking at a price never sends anything anywhere.
 
 ## Subscriptions
 
-MacroDime Pro, the paid part of the app, is sold through Google Play. Google
-takes the payment, under Google's own privacy policy; MacroDime never sees your
-card or any payment details. The app asks Google Play, through the Play Store
+MacroDime Pro, the subscription the app needs after its free trial, is sold
+through Google Play. Google takes the payment, under Google's own privacy
+policy; MacroDime never sees your card or any payment details. The app asks Google Play, through the Play Store
 app on your phone, only whether your subscription is active. It keeps that
 answer, the plan you chose and the date a free trial ends on your phone, so Pro
 keeps working for a few days without a connection and can remind you before a
 trial ends. None of it is sent to us, and Delete All My Data removes it too; an
 active subscription is found again from Google Play the next time the app asks.
+
+## Notifications
+
+MacroDime sends one kind of notification: a reminder two days before a free
+trial ends, if you allow notifications and leave the reminder switched on. It is
+scheduled and shown by your phone alone. Nothing about it, or about whether you
+allowed it, leaves your device.
 
 ## Third parties
 

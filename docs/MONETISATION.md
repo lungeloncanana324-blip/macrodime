@@ -1,8 +1,64 @@
 # Monetisation: the decision, and the plan for the build that adds it
 
 Decided 2026-09-20. **Revised 2026-10-03**: the public launch carries the
-subscription, with a 14-day free trial on the yearly plan. The revision comes
-first; the original reasoning follows it, because most of it still holds.
+subscription, with a 14-day free trial on the yearly plan. **Revised again
+2026-10-04**: there is no free tier; the 14-day trial, renewing into the yearly
+plan, is the way into the app. The revisions come first, newest first; the
+original reasoning follows, because most of it still holds.
+
+## Revised 2026-10-04: the trial is the way in
+
+Lungelo's decision: the free plan is the 14-day free trial, renewing into the
+yearly plan. After onboarding the paywall is the way into the app, and it stays
+the way in for anyone whose trial or subscription ends. Android only so far;
+the iOS twin still has the free tier (SHIPPING-GAPS section 0).
+
+**What the evidence says about it.** RevenueCat's State of Subscription Apps
+2026 (115,000 apps): hard paywalls convert 10.7% of downloads to paying
+subscribers against 2.1% for freemium, and earn a median $2.32 per install by
+day 14 against $0.27. In Health and Fitness 68% of revenue is annual, 35.0% of
+trials convert, and only 30.3% of payers renew for a second year. Google keeps
+15% of subscription revenue. So 100 trial starts are worth about 35 yearly
+payments, about $890 after Google's cut, and about 11 of those payers renew.
+That data comes from apps that chose each model, so it is evidence, not proof:
+apps with hard paywalls tend to be ones with strong intent behind each install.
+
+**The costs, stated plainly.**
+
+1. A trial is not a free plan. Starting it is a Google Play purchase: a payment
+   method on the account and consent to the yearly price. Anyone without one
+   cannot use the app at all. Play's policy requires the listing to say that a
+   subscription is required, and it does.
+2. The biggest leak is day zero. Blinkist found 33% of all trial cancellations
+   happened right after the trial started, from people afraid of forgetting.
+   Their fix, promising a reminder before the trial ends and keeping the
+   promise, raised trial starts 23%, cut complaints 55%, and took notification
+   opt-in from 6% to 74%. MacroDime does the same: the paywall's timeline names
+   the reminder on day 12, and TrialReminder posts it (local notification, no
+   network), with the card on Today as the fallback.
+3. No free users means no ratings or word of mouth from people who would have
+   paid later. Accepted.
+4. The closed test. Every closed tester must be a license tester, and Google's
+   test subscriptions end after about 3.5 hours (3-minute trial, 30-minute
+   yearly renewals, 6 at most), so testers meet the paywall again and restart
+   with the test card. See play-store-listing.md, License testers.
+5. Without analytics the funnel cannot be measured inside the app. Play
+   Console's subscription statistics (trial starts, conversions, cancellations
+   and the cancellation survey) are the instruments.
+
+**What the build does to convert, honestly.** The onboarding asks what has been
+getting in the way and answers each pick with something the app does; the app
+plans the person's first week before the paywall, and the paywall shows today's
+real meals and their cost; the timeline answers the fear of a surprise charge;
+"No payment today" sits under the button; the yearly price is the largest price
+on the screen (Play forbids leading a yearly plan with its monthly cost); and a
+lapsed account is welcomed back with what its swaps saved, if anything.
+
+**Yearly only.** One offer keeps the paywall simple, and Health and Fitness
+revenue is mostly annual. The cost: someone who would pay $5.99 for a month but
+will not commit $29.99 is lost. The app still supports a monthly base plan and
+shows it as a second choice the moment it is active in Play Console, so this
+can be tested later without a build.
 
 ## Revised 2026-10-03: launch with Pro and a 14-day trial
 
