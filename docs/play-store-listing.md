@@ -277,7 +277,7 @@ so changing a price or the trial later needs no new build.
 | Finish onboarding | "Your week is ready": your own targets and budget, today's planned meals with their cost, "A subscription is required to use MacroDime." over Yearly with "14 days free", the timeline (today, day 12 reminder, day 14) and "Start my 14-day free trial" over "No payment today". No close button |
 | Start the trial | On Android 13 and later, the notification permission first (for the reminder), then Google Play's own purchase sheet showing the trial and the price after it; after confirming, Today opens on the planned week |
 | Settings | "Pro, yearly", the date the trial ends, Manage subscription |
-| Manage subscription | Opens Google Play's subscription page for MacroDime |
+| Manage subscription | Opens Google Play's Subscriptions list with MacroDime in it (since version code 5; before that it linked to MacroDime's own page, which Play leaves empty once a subscription has expired, as a license tester's does after about three hours) |
 | Cancel in Play, return to the app | Pro stays until the trial ends; Today's reminder (last two days) says you won't be charged |
 | Uninstall, reinstall, onboard again | No paywall: the store already knows the account has Pro |
 | As a license tester, in Play's subscriptions page switch the payment method to "Test card, always declines" and wait for the next renewal (about 30 minutes) | During the grace period (about 5 minutes) Pro stays and Google Play shows its own payment message over the app; then account hold: "Your subscription is on hold" with "Fix it in Google Play", and no new subscription offered |

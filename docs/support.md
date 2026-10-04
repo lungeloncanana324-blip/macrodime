@@ -76,14 +76,14 @@ restore a purchase and delete all your data.
 **My subscription says it is on hold.** Google Play could not take a payment,
 or the subscription is paused. Fix it in the Google Play app: tap your profile,
 then Payments and subscriptions, then Subscriptions, then MacroDime. MacroDime's
-own Fix it in Google Play button opens the same page, and your plan comes back
+own Fix it in Google Play button opens the same list, and your plan comes back
 as soon as Google Play confirms the subscription.
 
 **How do I cancel?** In the Google Play app: tap your profile, then Payments and
 subscriptions, then Subscriptions, then MacroDime. Cancel before a free trial
 ends and you are not charged. Pro keeps working until the end of what you have
 already paid for, or of the trial. MacroDime's own Settings, under MacroDime
-Pro, has a Manage subscription button that opens the same page.
+Pro, has a Manage subscription button that opens the same list.
 
 **I paid but the app still shows the subscription screen.** Tap Restore
 purchases on that screen, while signed in to the Google account that paid. A payment Google

@@ -66,8 +66,16 @@ class PlayBillingStore(
 
     override val store = Store.GooglePlay
 
-    override val manageSubscriptionUrl =
-        "https://play.google.com/store/account/subscriptions?sku=${PlayOffers.PRODUCT_ID}&package=${context.packageName}"
+    /**
+     * Google Play's Subscriptions list, not the page for `pro` alone. The
+     * product link (`?sku=pro&package=...`) works only for a subscription that
+     * has not expired, and Play shows an empty page for one that has. The app
+     * cannot always know which it is: Play Billing answers from the Play Store
+     * app's own cache, which can still list a subscription that ended (a
+     * license tester's ends after about three hours). The list always shows
+     * something: MacroDime active, on hold, cancelled or expired, one tap away.
+     */
+    override val manageSubscriptionUrl = "https://play.google.com/store/account/subscriptions"
 
     private val appContext = context.applicationContext
 
