@@ -18,6 +18,8 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onNodeWithText
@@ -91,16 +93,36 @@ class AppFlowTest {
         compose.waitForIdle()
     }
 
-    /** Welcome to Start Planning, with the defaults except a weight. */
-    private fun completeOnboarding(weight: String = "82") {
+    private fun waitForTag(tag: String) = eventually { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+
+    /** The three intro screens, picking nothing, to Welcome. */
+    private fun passIntro() {
+        waitForTag("intro-hook")
+        compose.onNodeWithTag("intro-start").performClick()
+        waitForTag("intro-pains")
+        compose.onNodeWithTag("intro-continue").performClick()
+        waitForTag("intro-fixes")
+        compose.onNodeWithTag("intro-continue").performClick()
         waitForText("Welcome")
+    }
+
+    /** The intro to Build my week, with the defaults except a weight. */
+    private fun completeOnboarding(weight: String = "82") {
+        passIntro()
         next()
         compose.onNodeWithTag("weight").performTextReplacement(weight)
         repeat(6) { next() }
         waitForText("I understand these are estimates")
         compose.onNodeWithTag("acknowledge").performClick()
         next()
-        waitForText("Today's macros")
+        waitForText("Today's meals")
+    }
+
+    /** Empties the week onboarding planned, for tests that need to know exactly what is on it. */
+    private fun clearPlannedWeek() = runBlocking {
+        for (offset in 0L until 7L) {
+            repository.mealsOnce(LocalDate.now().plusDays(offset)).flatMap { it.portions }.forEach { repository.removePortion(it.id) }
+        }
     }
 
     private fun scrollTo(tag: String) {
@@ -120,6 +142,53 @@ class AppFlowTest {
         assertEquals("standard", profile.prepEffortRaw)
     }
 
+    /** Onboarding ends with a week already planned: every scheduled meal of every day, named, inside the allowance. */
+    @Test
+    fun onboardingPlansTheFirstWeek() {
+        launch()
+        completeOnboarding()
+        val profile = assertNotNull(runBlocking { repository.currentProfile() })
+        for (offset in 0L until 7L) {
+            val meals = runBlocking { repository.mealsOnce(LocalDate.now().plusDays(offset)) }.filter { !it.isEmpty }
+            assertEquals(listOf(MealSlot.Breakfast, MealSlot.Lunch, MealSlot.Dinner), meals.map { it.slot }.sorted(), "day $offset")
+            assertTrue(meals.none { it.name == it.slot.displayName }, "day $offset has an unnamed meal: ${meals.map { it.name }}")
+            assertTrue(meals.sumOf { it.cost } <= profile.dailyFoodBudget + 0.005, "day $offset is over the allowance")
+        }
+        // Today shows them with their names.
+        val breakfast = runBlocking { repository.mealsOnce(LocalDate.now()) }.first { it.slot == MealSlot.Breakfast }
+        waitForText(breakfast.name)
+    }
+
+    /** The answers screen answers what was picked, and only that. */
+    @Test
+    fun theIntroAnswersWhatWasPicked() {
+        launch()
+        waitForTag("intro-hook")
+        compose.onNodeWithTag("intro-start").performClick()
+        waitForTag("intro-pains")
+        compose.onNodeWithTag("pain-ProteinIsHard").performClick()
+        compose.onNodeWithTag("pain-FoodGoesToWaste").performClick()
+        compose.onNodeWithTag("intro-continue").performClick()
+        waitForTag("intro-fixes")
+        waitForText("Here's how MacroDime fixes that")
+        waitForText("Protein planned into every day")
+        waitForText("A shopping list that matches")
+        assertTrue(compose.onAllNodesWithText("Cheaper swaps, same macros").fetchSemanticsNodes().isEmpty())
+    }
+
+    /** A day past the planned week offers to plan itself, and does. */
+    @Test
+    fun anEmptyDayPlansItselfOnRequest() {
+        launch()
+        completeOnboarding()
+        compose.onNodeWithTag("tab-Plan").performClick()
+        waitForText("Meal Plan")
+        repeat(7) { compose.onNodeWithContentDescription("Next day").performClick() }
+        waitForTag("plan-day")
+        compose.onNodeWithTag("plan-day-button").performClick()
+        eventually { runBlocking { repository.mealsOnce(LocalDate.now().plusDays(7)) }.any { !it.isEmpty } }
+    }
+
     /**
      * The first bug a human found on iOS: Start Planning disabled with no
      * visible reason. Here the switch that enables it sits beside it, and the
@@ -128,9 +197,9 @@ class AppFlowTest {
     @Test
     fun startPlanningWaitsForTheHealthAcknowledgement() {
         launch()
-        waitForText("Welcome")
+        passIntro()
         repeat(7) { next() }
-        waitForText("Your Plan")
+        waitForText("Your plan")
         compose.onNodeWithTag("continue").assertIsNotEnabled()
         compose.onNodeWithText("I understand these are estimates, not medical advice.").assertExists()
         compose.onNodeWithTag("acknowledge").performClick()
@@ -140,7 +209,7 @@ class AppFlowTest {
     @Test
     fun aClearedWeightBlocksTheStepAndSaysWhy() {
         launch()
-        waitForText("Welcome")
+        passIntro()
         next()
         compose.onNodeWithTag("weight").performTextReplacement("")
         compose.onNodeWithText("Enter a weight between 25 kg and 350 kg.").assertExists()
@@ -160,21 +229,23 @@ class AppFlowTest {
         compose.onNodeWithTag("tab-Plan").performClick()
         waitForText("Meal Plan")
 
-        scrollTo("add-breakfast")
-        compose.onNodeWithTag("add-breakfast").performClick()
-        waitForText("Add to Breakfast")
+        // Snacks: the one slot a three-meal plan leaves empty.
+        scrollTo("add-snack")
+        compose.onNodeWithTag("add-snack").performClick()
+        waitForText("Add to Snacks")
         compose.onNodeWithTag("food-search").performTextInput("oats")
         compose.onNodeWithText("Rolled Oats").performClick()
 
-        waitForText("60 g dry")
-        val meals = runBlocking { repository.mealsOnce(LocalDate.now()) }
-        assertEquals(listOf("rolled-oats"), meals.single { it.slot == MealSlot.Breakfast }.portions.map { it.food.id })
+        eventually {
+            runBlocking { repository.mealsOnce(LocalDate.now()) }.firstOrNull { it.slot == MealSlot.Snack }?.portions?.map { it.food.id } == listOf("rolled-oats")
+        }
     }
 
     @Test
     fun aReviewedSwapIsAppliedToTheStoredMeal() {
         launch()
         completeOnboarding()
+        clearPlannedWeek()
         runBlocking {
             for (id in listOf("salmon-fillet", "white-rice", "fresh-broccoli", "olive-oil")) {
                 repository.addFood(LocalDate.now(), MealSlot.Dinner, id, 1.0)
@@ -199,15 +270,19 @@ class AppFlowTest {
     fun theGroceryListBuildsItselfFromThePlan() {
         launch()
         completeOnboarding()
-        runBlocking { repository.addFood(LocalDate.now(), MealSlot.Lunch, "canned-tuna-water", 2.0) }
+        clearPlannedWeek()
+        runBlocking {
+            repository.addFood(LocalDate.now(), MealSlot.Lunch, "canned-tuna-water", 2.0)
+            repository.regenerateGroceries(LocalDate.now())
+        }
         compose.onNodeWithTag("tab-Groceries").performClick()
         waitForText("Canned Tuna in Water")
         compose.onNodeWithText("2 cans (284 g drained)").assertExists()
     }
 
     /**
-     * Deleting everything must land on a fresh Welcome, not on the summary step
-     * of the draft the user finished an hour ago.
+     * Deleting everything must land on a fresh start (the intro), not on the
+     * summary step of the draft the user finished an hour ago.
      */
     @Test
     fun deletingEverythingStartsOnboardingAfresh() {
@@ -219,7 +294,7 @@ class AppFlowTest {
         compose.onNodeWithTag("delete-all").performClick()
         compose.onNodeWithTag("confirm-delete").performClick()
 
-        waitForText("Welcome")
+        waitForTag("intro-hook")
         compose.onNode(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.TestTag, "acknowledge")).assertDoesNotExist()
         assertEquals(null, runBlocking { repository.currentProfile() })
     }
@@ -233,7 +308,7 @@ class AppFlowTest {
         waitForText("Settings")
         scrollTo("edit-profile")
         compose.onNodeWithTag("edit-profile").performClick()
-        waitForText("About You")
+        waitForText("About you")
         compose.onNodeWithTag("weight").performTextReplacement("90")
         repeat(6) { next() }
         waitForText("Save changes")

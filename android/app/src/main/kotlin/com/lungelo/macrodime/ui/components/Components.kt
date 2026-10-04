@@ -12,7 +12,9 @@
  */
 package com.lungelo.macrodime.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -41,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -49,10 +52,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.lungelo.macrodime.billing.findActivity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -66,7 +76,9 @@ import androidx.compose.ui.unit.min
 import com.lungelo.macrodime.domain.BudgetTier
 import com.lungelo.macrodime.domain.CurrencySettings
 import com.lungelo.macrodime.domain.DisplayFormat
+import com.lungelo.macrodime.R
 import com.lungelo.macrodime.domain.MealItem
+import com.lungelo.macrodime.domain.MealSlot
 import com.lungelo.macrodime.domain.NutritionFacts
 import com.lungelo.macrodime.domain.roundToIntHalfAway
 import com.lungelo.macrodime.engine.MacroAxis
@@ -86,7 +98,7 @@ val ContentMaxWidth = 620.dp
 
 val MacroAxis.tint: Color
     @Composable get() = when (this) {
-        MacroAxis.Calories -> Brand.colors.gold
+        MacroAxis.Calories -> Brand.colors.calories
         MacroAxis.Protein -> Brand.colors.protein
         MacroAxis.Carbs -> Brand.colors.carbs
         MacroAxis.Fat -> Brand.colors.fat
@@ -118,12 +130,12 @@ fun MacroAxis.formatted(value: Double): String =
 @Composable
 fun MacroCard(
     modifier: Modifier = Modifier,
-    padding: Dp = 16.dp,
+    padding: Dp = 18.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = CardShape,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
@@ -342,10 +354,10 @@ fun StatTile(
     }
 }
 
-/** Price-tier chip: `$` or `$$`. Green for the budget tier, gold for the flexible one. */
+/** Price-tier chip: `$` or `$$`. Basil for the budget tier, saffron for the flexible one. */
 @Composable
 fun TierChip(tier: BudgetTier) {
-    val color = if (tier == BudgetTier.Strict) Brand.colors.underBudget else Brand.colors.gold
+    val color = if (tier == BudgetTier.Strict) Brand.colors.underBudget else Brand.colors.warm
     Text(
         tier.priceSymbol,
         modifier = Modifier
@@ -370,33 +382,41 @@ fun SelectableRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val gold = MaterialTheme.colorScheme.primary
+    val ink = MaterialTheme.colorScheme.primary
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(OptionShape)
             .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = OptionShape,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(2.dp, if (isSelected) gold else Color.Transparent),
+        border = if (isSelected) BorderStroke(2.dp, ink) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = if (isSelected) gold else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(26.dp),
-            )
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) ink else MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.width(8.dp))
             Icon(
                 if (isSelected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                 contentDescription = null,
-                tint = if (isSelected) gold else MaterialTheme.colorScheme.outline,
+                tint = if (isSelected) ink else MaterialTheme.colorScheme.outlineVariant,
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -405,3 +425,53 @@ fun SelectableRow(
 
 /** Centres a column of cards and stops it growing past [ContentMaxWidth]. */
 fun Modifier.contentWidth(): Modifier = this.widthIn(max = ContentMaxWidth).fillMaxWidth()
+
+/** Every card's corners. */
+val CardShape = RoundedCornerShape(24.dp)
+
+/** A choice the user taps: a little tighter than a card, so a stack of them reads as one list. */
+val OptionShape = RoundedCornerShape(18.dp)
+
+// Food photography
+
+/**
+ * One of the bundled food photographs, cropped to fill [modifier]'s bounds.
+ * Decorative: every photo sits beside words that say the same thing, so a
+ * screen reader skips it.
+ */
+@Composable
+fun FoodPhoto(@DrawableRes photo: Int, modifier: Modifier = Modifier, shape: Shape = RectangleShape) {
+    Image(
+        painter = painterResource(photo),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier.clip(shape),
+    )
+}
+
+/**
+ * Light status-bar icons while a dark photograph sits behind them (the intro,
+ * the paywall), put back as they were when the screen leaves. Without it the
+ * light theme draws dark icons on a dark photo and the clock disappears.
+ */
+@Composable
+fun StatusBarOverPhoto() {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+    DisposableEffect(view) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        val before = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { if (before != null) controller.isAppearanceLightStatusBars = before }
+    }
+}
+
+/** The photograph for each meal of the day, used wherever a meal is named. */
+val MealSlot.photo: Int
+    @DrawableRes get() = when (this) {
+        MealSlot.Breakfast -> R.drawable.food_breakfast
+        MealSlot.Lunch -> R.drawable.food_lunch
+        MealSlot.Dinner -> R.drawable.food_dinner
+        MealSlot.Snack -> R.drawable.food_snack
+    }

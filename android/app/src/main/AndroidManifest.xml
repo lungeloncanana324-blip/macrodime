@@ -18,12 +18,19 @@
     which catches the refusal and logs it, so a diagnostic is dropped before it
     is stored and nothing crashes or retries in the background. Checked in the
     9.1.0 / 3.1.8 bytecode on 2026-10-03; recheck when either is upgraded.
+
+    Two more since 2026-10-04, for the trial reminder the paywall promises:
+    POST_NOTIFICATIONS to show it (Android 13 and later ask the person first),
+    and RECEIVE_BOOT_COMPLETED to put its alarm back after a restart. Both are
+    local to the phone; neither reaches the network.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".MacroDimeApplication"
@@ -47,5 +54,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".billing.TrialReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

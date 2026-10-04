@@ -15,6 +15,16 @@
 package com.lungelo.macrodime.ui.plan
 
 import androidx.compose.foundation.layout.Arrangement
+import com.lungelo.macrodime.ui.components.photo
+import com.lungelo.macrodime.ui.components.FoodPhoto
+import com.lungelo.macrodime.ui.components.CardShape
+import com.lungelo.macrodime.R
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +35,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -81,7 +92,6 @@ import com.lungelo.macrodime.ui.components.TierChip
 import com.lungelo.macrodime.ui.components.contentWidth
 import com.lungelo.macrodime.ui.components.displayName
 import com.lungelo.macrodime.ui.components.formatted
-import com.lungelo.macrodime.ui.components.icon
 import com.lungelo.macrodime.ui.components.tint
 import com.lungelo.macrodime.ui.theme.Brand
 import java.time.Instant
@@ -105,6 +115,11 @@ fun PlanScreen(model: DayPlanViewModel) {
     var portionTarget by remember { mutableStateOf<PortionTarget?>(null) }
     var isPickingDate by rememberSaveable { mutableStateOf(false) }
 
+    // A new day starts at the top, where its totals are and, on an empty day,
+    // the offer to plan it. Kept scrolled, the offer would sit out of sight.
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.date) { listState.scrollToItem(0) }
+
     LaunchedEffect(message) {
         message?.let {
             snackbar.showSnackbar(it)
@@ -117,11 +132,11 @@ fun PlanScreen(model: DayPlanViewModel) {
             TopAppBar(
                 title = { Text("Meal Plan", fontWeight = FontWeight.SemiBold) },
                 actions = {
-                    IconButton(onClick = { model.selectDate(state.date.minusDays(1)) }) {
+                    IconButton(onClick = { model.shiftDate(-1) }) {
                         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Previous day")
                     }
                     TextButton(onClick = { isPickingDate = true }) { Text(dayLabel(state.date)) }
-                    IconButton(onClick = { model.selectDate(state.date.plusDays(1)) }) {
+                    IconButton(onClick = { model.shiftDate(1) }) {
                         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Next day")
                     }
                 },
@@ -135,15 +150,19 @@ fun PlanScreen(model: DayPlanViewModel) {
         // would be a wrong answer, not a placeholder.
         if (!state.isLoaded) return@Scaffold
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (state.meals.all { it.isEmpty }) {
+                item { PlanDayCard(state.dailyBudget, onPlan = model::planThisDay) }
+            }
             item {
                 MacroCard(Modifier.contentWidth()) {
                     state.targets?.let { targets ->
                         MacroRingRow(state.consumed, targets, ringSize = 62.dp, lineWidth = 8.dp)
-                        HorizontalDivider()
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                     BudgetMeter(state.meals, state.dailyBudget, showsCaption = false)
                 }
@@ -208,6 +227,27 @@ private fun dayLabel(date: LocalDate): String {
     }
 }
 
+/**
+ * An empty day's offer: the starter plan for this date, built for the
+ * person's targets, allowance and diet. Everything in it can be changed.
+ */
+@Composable
+private fun PlanDayCard(dailyBudget: Double, onPlan: () -> Unit) {
+    val prices = LocalCurrency.current
+    Surface(Modifier.contentWidth().testTag("plan-day"), shape = CardShape, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Column {
+            FoodPhoto(R.drawable.food_mealprep, Modifier.fillMaxWidth().height(140.dp))
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Nothing planned for this day", style = MaterialTheme.typography.titleLarge)
+                Caption("One tap plans it to your targets and your ${prices.format(dailyBudget)} allowance. Change anything after.")
+                Button(onClick = onPlan, modifier = Modifier.fillMaxWidth().testTag("plan-day-button"), shape = CircleShape) {
+                    Text("Plan this day for me")
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun MealCard(
     slot: MealSlot,
@@ -223,14 +263,23 @@ private fun MealCard(
     val prices = LocalCurrency.current
     MacroCard(Modifier.contentWidth().testTag("meal-${slot.rawValue}")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(slot.icon, contentDescription = null, tint = Brand.colors.gold, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(slot.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            FoodPhoto(slot.photo, Modifier.size(56.dp), RoundedCornerShape(16.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                // A named meal under its slot; an empty or unnamed one is just the slot.
+                val name = meal?.takeIf { !it.isEmpty }?.name?.takeIf { it.isNotBlank() && it != slot.displayName }
+                if (name != null) {
+                    Text(slot.displayName.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(name ?: slot.displayName, style = MaterialTheme.typography.titleMedium)
+            }
             if (meal != null && !meal.isEmpty) {
-                // The lines as shown, added up: the header always equals the column.
-                Text(prices.formatDisplayAmount(prices.shownCost(meal)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(8.dp))
-                TierChip(meal.effectiveTier)
+                Column(horizontalAlignment = Alignment.End) {
+                    // The lines as shown, added up: the header always equals the column.
+                    Text(prices.formatDisplayAmount(prices.shownCost(meal)), style = MaterialTheme.typography.titleSmall)
+                    TierChip(meal.effectiveTier)
+                }
             }
         }
 
@@ -238,7 +287,7 @@ private fun MealCard(
             meal.portions.forEach { portion ->
                 PortionRow(portion, meal, onFindCheaper, onRemove, onSetServings)
             }
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row {
                 MacroAxis.entries.forEach { axis ->
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -252,8 +301,8 @@ private fun MealCard(
                     onClick = { onReviewSwap(swap) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Brand.colors.underBudget.copy(alpha = 0.14f),
-                        contentColor = Brand.colors.underBudget,
+                        containerColor = Brand.colors.accentSoft,
+                        contentColor = Brand.colors.accent,
                     ),
                 ) {
                     Icon(Icons.Rounded.Autorenew, contentDescription = null, modifier = Modifier.size(18.dp))

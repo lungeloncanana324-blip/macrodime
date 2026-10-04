@@ -79,7 +79,6 @@ import com.lungelo.macrodime.domain.UnitConversion
 import androidx.compose.ui.platform.testTag
 import com.lungelo.macrodime.ui.components.Caption
 import com.lungelo.macrodime.ui.onboarding.OnboardingViewModel
-import com.lungelo.macrodime.ui.paywall.ProIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -90,8 +89,6 @@ fun LogMeasurementSheet(
     repository: MacroDimeRepository,
     photos: PhotoStore,
     onDismiss: () -> Unit,
-    isPro: Boolean = true,
-    onUpgradeForPhotos: () -> Unit = {},
 ) {
     /** The imported copy, in app storage. Deleted again if the sheet is abandoned. */
     var photoFileName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -104,7 +101,7 @@ fun LogMeasurementSheet(
     ModalBottomSheet(onDismissRequest = abandon, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LogMeasurementContent(
             profile, repository, photos, photoFileName, { photoFileName = it },
-            onCancel = abandon, onSaved = onDismiss, isPro = isPro, onUpgradeForPhotos = onUpgradeForPhotos,
+            onCancel = abandon, onSaved = onDismiss,
         )
     }
 }
@@ -119,9 +116,6 @@ fun LogMeasurementContent(
     onPhotoChange: (String?) -> Unit,
     onCancel: () -> Unit,
     onSaved: () -> Unit,
-    /** Measurements are free: targets follow weight. Photos are Pro. */
-    isPro: Boolean = true,
-    onUpgradeForPhotos: () -> Unit = {},
 ) {
     var waist by rememberSaveable { mutableStateOf("") }
     var hips by rememberSaveable { mutableStateOf("") }
@@ -193,29 +187,17 @@ fun LogMeasurementContent(
 
             Text("Progress photo", style = MaterialTheme.typography.titleSmall)
             OutlinedButton(
-                onClick = {
-                    if (isPro) {
-                        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    } else {
-                        onUpgradeForPhotos()
-                    }
-                },
+                onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 enabled = !isImporting,
                 modifier = Modifier.fillMaxWidth().testTag("add-photo"),
             ) {
                 if (isImporting) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Icon(if (isPro) Icons.Rounded.PhotoCamera else ProIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    when {
-                        !isPro -> "Add photos with Pro"
-                        photoFileName == null -> "Add photo"
-                        else -> "Replace photo"
-                    },
-                )
+                Text(if (photoFileName == null) "Add photo" else "Replace photo")
             }
             preview?.let { bitmap ->
                 Box {

@@ -2,8 +2,13 @@
  * MacroDimeRoot.kt
  * MacroDime
  *
- * Gates onboarding, then hosts the four tabs. Port of RootView and MainTabView
- * in MacroDime/App/MacroDimeApp.swift.
+ * Gates onboarding, then MacroDime Pro, then hosts the four tabs. Port of
+ * RootView and MainTabView in MacroDime/App/MacroDimeApp.swift.
+ *
+ * Since 2026-10-04 there is no free tier: after onboarding the paywall is the
+ * way into the app, and it stays the way in for anyone whose trial or
+ * subscription has ended. While the store is still being asked, a subscriber
+ * sees a blank frame rather than the paywall flashing past.
  */
 package com.lungelo.macrodime.ui
 
@@ -23,14 +28,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,23 +52,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lungelo.macrodime.AppContainer
+import com.lungelo.macrodime.billing.StoreState
+import com.lungelo.macrodime.billing.TrialReminder
 import com.lungelo.macrodime.data.UserProfileEntity
 import com.lungelo.macrodime.data.currency
+import com.lungelo.macrodime.domain.MealItem
 import com.lungelo.macrodime.domain.PaywallReason
 import com.lungelo.macrodime.ui.components.LocalCurrency
 import com.lungelo.macrodime.ui.components.openExternal
-import com.lungelo.macrodime.ui.paywall.PaywallScreen
-import com.lungelo.macrodime.ui.paywall.ProLockedTab
 import com.lungelo.macrodime.ui.groceries.GroceryScreen
 import com.lungelo.macrodime.ui.groceries.GroceryViewModel
 import com.lungelo.macrodime.ui.onboarding.OnboardingScreen
 import com.lungelo.macrodime.ui.onboarding.OnboardingViewModel
+import com.lungelo.macrodime.ui.paywall.PaywallScreen
 import com.lungelo.macrodime.ui.plan.DayPlanViewModel
 import com.lungelo.macrodime.ui.plan.PlanScreen
 import com.lungelo.macrodime.ui.settings.HealthAndSafetyScreen
 import com.lungelo.macrodime.ui.settings.SettingsScreen
 import com.lungelo.macrodime.ui.today.LogMeasurementSheet
 import com.lungelo.macrodime.ui.today.TodayScreen
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** A view model built from the container, scoped to the activity unless a key separates instances. */
@@ -80,6 +91,8 @@ fun MacroDimeRoot(container: AppContainer, initialTab: Int = 0) {
     val app = appViewModel { AppViewModel(container.repository) }
     val state by app.state.collectAsStateWithLifecycle()
     val subscriptions = container.subscriptions
+    val pro by subscriptions.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     // The store is asked again whenever the app comes to the front, so a
     // purchase, a cancellation or an expiry elsewhere shows up straight away.
@@ -87,13 +100,17 @@ fun MacroDimeRoot(container: AppContainer, initialTab: Int = 0) {
         subscriptions.refresh()
         onPauseOrDispose { }
     }
-    // Set when onboarding saves: the paywall then opens on the targets just made.
+    // The trial reminder follows the store's answer: a trial schedules it, a
+    // cancellation in Google Play takes it away.
+    LaunchedEffect(pro.entitlement) { TrialReminder.sync(context, pro.entitlement) }
+
+    // Set when onboarding saves: the paywall then opens on the week just planned.
     var justOnboarded by rememberSaveable { mutableStateOf(false) }
 
     when (val current = state) {
         // A blank frame, never the wizard: a returning user must not see
         // onboarding flash past while the profile loads.
-        RootState.Loading -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        RootState.Loading -> Blank()
 
         is RootState.Onboarding -> {
             val model = appViewModel(key = "onboarding-${current.session}") { OnboardingViewModel(container.repository) }
@@ -102,19 +119,62 @@ fun MacroDimeRoot(container: AppContainer, initialTab: Int = 0) {
         }
 
         is RootState.Main -> CompositionLocalProvider(LocalCurrency provides current.profile.currency) {
-            MainTabs(container, current.profile, initialTab, justOnboarded, onIntroPaywallDone = { justOnboarded = false })
+            when {
+                pro.isPro -> MainTabs(container, current.profile, initialTab, pro)
+                // Still asking the store: a subscriber must not see the paywall flash past.
+                pro.availability == StoreState.Availability.Connecting -> Blank()
+                else -> Gate(container, current.profile, if (justOnboarded) PaywallReason.AfterOnboarding else PaywallReason.Returning)
+            }
         }
     }
 }
 
 @Composable
-private fun MainTabs(
-    container: AppContainer,
-    profile: UserProfileEntity,
-    initialTab: Int,
-    justOnboarded: Boolean,
-    onIntroPaywallDone: () -> Unit,
-) {
+private fun Blank() {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+}
+
+/** The paywall as the way in, with the health statement and Delete All My Data reachable from it. */
+@Composable
+private fun Gate(container: AppContainer, profile: UserProfileEntity, reason: PaywallReason) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val today = remember { LocalDate.now() }
+    // Null until today's meals have loaded: the paywall waits for them, so it
+    // draws once, whole, instead of jumping down when the meals arrive just as
+    // a finger reaches for a plan.
+    val preview by container.repository.meals(today).collectAsStateWithLifecycle(initialValue = null as List<MealItem>?)
+    val savedSoFar by container.repository.totalSwapSavings.collectAsStateWithLifecycle(initialValue = 0.0)
+    var isReadingHealth by rememberSaveable { mutableStateOf(false) }
+
+    val meals = preview
+    if (meals == null) {
+        Blank()
+        return
+    }
+    if (isReadingHealth) {
+        HealthAndSafetyScreen(onBack = { isReadingHealth = false })
+        return
+    }
+    PaywallScreen(
+        subscriptions = container.subscriptions,
+        profile = profile,
+        reason = reason,
+        savedSoFarUsd = savedSoFar,
+        preview = meals,
+        onOpenHealth = { isReadingHealth = true },
+        onDeleteAll = {
+            scope.launch {
+                runCatching { container.repository.deleteAllUserData() }
+                container.subscriptions.forget()
+                TrialReminder.forget(context)
+            }
+        },
+    )
+}
+
+@Composable
+private fun MainTabs(container: AppContainer, profile: UserProfileEntity, initialTab: Int, pro: StoreState) {
     var tab by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, Tab.entries.lastIndex)) }
     var isEditingProfile by rememberSaveable { mutableStateOf(false) }
     var isReadingHealth by rememberSaveable { mutableStateOf(false) }
@@ -122,22 +182,7 @@ private fun MainTabs(
 
     val context = LocalContext.current
     val subscriptions = container.subscriptions
-    val pro by subscriptions.state.collectAsStateWithLifecycle()
-    val savedSoFar by container.repository.totalSwapSavings.collectAsStateWithLifecycle(initialValue = 0.0)
-    var paywallReason by rememberSaveable { mutableStateOf<PaywallReason?>(null) }
     val manageSubscription = { openExternal(context, subscriptions.manageSubscriptionUrl) }
-
-    // Straight after onboarding, unless the store already knows this account
-    // has Pro (a reinstall, say): then there is nothing to sell.
-    if (justOnboarded && !pro.isPro) {
-        PaywallScreen(subscriptions, profile, PaywallReason.AfterOnboarding, savedSoFar, onClose = onIntroPaywallDone)
-        return
-    }
-    val openReason = paywallReason
-    if (openReason != null) {
-        PaywallScreen(subscriptions, profile, openReason, savedSoFar, onClose = { paywallReason = null })
-        return
-    }
 
     val today = appViewModel(key = "today") { DayPlanViewModel(container.repository) }
     val plan = appViewModel(key = "plan") { DayPlanViewModel(container.repository) }
@@ -168,13 +213,20 @@ private fun MainTabs(
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) {
                 Tab.entries.forEach { item ->
                     NavigationBarItem(
                         selected = tab == item.ordinal,
                         onClick = { tab = item.ordinal },
                         icon = { Icon(item.icon, contentDescription = null) },
-                        label = { Text(item.label) },
+                        label = { Text(item.label, style = MaterialTheme.typography.labelMedium) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                         modifier = Modifier.testTag("tab-${item.name}"),
                     )
                 }
@@ -190,23 +242,13 @@ private fun MainTabs(
                 Tab.Today -> TodayScreen(
                     today,
                     onLogMeasurement = { isLoggingMeasurement = true },
+                    onOpenPlan = { tab = Tab.Plan.ordinal },
                     pro = pro,
                     store = subscriptions.store,
-                    onUpgrade = { paywallReason = it },
                     onManageSubscription = manageSubscription,
                 )
-                Tab.Plan ->
-                    if (pro.isPro) {
-                        PlanScreen(plan)
-                    } else {
-                        ProLockedTab("Meal Plan", PaywallReason.Planner, profile, pro, subscriptions.store) { paywallReason = PaywallReason.Planner }
-                    }
-                Tab.Groceries ->
-                    if (pro.isPro) {
-                        GroceryScreen(groceries, onGoToPlan = { tab = Tab.Plan.ordinal })
-                    } else {
-                        ProLockedTab("Groceries", PaywallReason.Groceries, profile, pro, subscriptions.store) { paywallReason = PaywallReason.Groceries }
-                    }
+                Tab.Plan -> PlanScreen(plan)
+                Tab.Groceries -> GroceryScreen(groceries, onGoToPlan = { tab = Tab.Plan.ordinal })
                 Tab.Settings -> SettingsScreen(
                     profile,
                     container.repository,
@@ -214,26 +256,18 @@ private fun MainTabs(
                     onOpenHealth = { isReadingHealth = true },
                     pro = pro,
                     store = subscriptions.store,
-                    onSeePlans = { paywallReason = PaywallReason.Settings },
                     onManageSubscription = manageSubscription,
                     onRestore = subscriptions::restore,
-                    onDeleted = subscriptions::forget,
+                    onDeleted = {
+                        subscriptions.forget()
+                        TrialReminder.forget(context)
+                    },
                 )
             }
         }
     }
 
     if (isLoggingMeasurement) {
-        LogMeasurementSheet(
-            profile,
-            container.repository,
-            container.photos,
-            onDismiss = { isLoggingMeasurement = false },
-            isPro = pro.isPro,
-            onUpgradeForPhotos = {
-                isLoggingMeasurement = false
-                paywallReason = PaywallReason.ProgressPhotos
-            },
-        )
+        LogMeasurementSheet(profile, container.repository, container.photos, onDismiss = { isLoggingMeasurement = false })
     }
 }

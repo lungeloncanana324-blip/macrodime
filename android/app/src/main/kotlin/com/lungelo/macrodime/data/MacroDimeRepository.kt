@@ -20,6 +20,9 @@ import com.lungelo.macrodime.domain.MealItem
 import com.lungelo.macrodime.domain.MealSlot
 import com.lungelo.macrodime.engine.FoodCatalog
 import com.lungelo.macrodime.engine.GroceryListBuilder
+import com.lungelo.macrodime.engine.PlanGenerator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -159,6 +162,43 @@ class MacroDimeRepository(
         val plan = dao.planForDay(day.toEpochDay()) ?: return
         val meal = dao.mealInSlot(plan.id, slot.rawValue) ?: return
         dao.updateMeal(meal.copy(name = name))
+    }
+
+    // Starter plan
+
+    /**
+     * Plans each empty day of the [days] starting at [start] with the starter
+     * plan, for [profile]'s targets, allowance and diet, then rebuilds the
+     * grocery lists those days fall in. A day that already holds any food is
+     * left exactly as it is: this never overwrites something the person chose.
+     * Returns how many days it planned.
+     *
+     * The rotation is keyed to the date, so a given day always gets the same
+     * plan however it is reached: from onboarding, or from "Plan this day".
+     */
+    suspend fun planEmptyDays(profile: UserProfileEntity, start: LocalDate, days: Int = PlanGenerator.DAYS): Int {
+        val input = PlanGenerator.Input(profile.prescription.targets, profile.dailyFoodBudget, profile.dietaryProfile, FoodCatalog.all)
+        var planned = 0
+        for (offset in 0 until days) {
+            val date = start.plusDays(offset.toLong())
+            if (mealsOnce(date).any { !it.isEmpty }) continue
+            // Every template, swap and balancing step is weighed per day: off the main thread.
+            val meals = withContext(Dispatchers.Default) {
+                PlanGenerator.day(input, Math.floorMod(date.toEpochDay(), PlanGenerator.DAYS.toLong()).toInt())
+            }
+            if (meals.isEmpty()) continue
+            database.withTransaction {
+                for (meal in meals) {
+                    for (portion in meal.portions) addFood(date, meal.slot, portion.food.id, portion.servings)
+                    renameMeal(date, meal.slot, meal.name)
+                }
+            }
+            planned += 1
+        }
+        if (planned > 0) {
+            (0 until days).map { weekStart(start.plusDays(it.toLong())) }.distinct().forEach { regenerateGroceries(it) }
+        }
+        return planned
     }
 
     // Groceries

@@ -64,6 +64,37 @@ class RepositoryTest {
         return assertNotNull(dao.profile())
     }
 
+    // Starter plan
+
+    /** The starter plan fills empty days only: a day with anything on it is the person's, and stays as it is. */
+    @Test
+    fun theStarterPlanFillsEmptyDaysAndNeverOverwrites() = runTest {
+        val profile = seededProfile()
+        repository.addFood(day.plusDays(2), MealSlot.Lunch, "canned-tuna-water", 1.0)
+
+        val planned = repository.planEmptyDays(profile, day, days = 4)
+
+        assertEquals(3, planned, "three empty days planned, the one with food left alone")
+        val untouched = repository.mealsOnce(day.plusDays(2))
+        assertEquals(listOf("canned-tuna-water"), untouched.flatMap { it.portions }.map { it.food.id })
+        for (offset in listOf(0L, 1L, 3L)) {
+            val meals = repository.mealsOnce(day.plusDays(offset)).filter { !it.isEmpty }
+            assertEquals(listOf(MealSlot.Breakfast, MealSlot.Lunch, MealSlot.Dinner), meals.map { it.slot }.sorted(), "day $offset")
+            assertTrue(meals.all { it.name != it.slot.displayName }, "day $offset meals are named for what they hold")
+        }
+        // Run again: nothing left to plan, nothing changed.
+        assertEquals(0, repository.planEmptyDays(profile, day, days = 4))
+    }
+
+    @Test
+    fun theStarterPlanBuildsTheShoppingList() = runTest {
+        val profile = seededProfile()
+        repository.planEmptyDays(profile, day, days = 1)
+        val week = MacroDimeRepository.weekStart(day)
+        val lines = repository.groceries(week).first()
+        assertTrue(lines.isNotEmpty(), "the planned day's ingredients should be on the list")
+    }
+
     // Seeding
 
     @Test

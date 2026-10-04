@@ -65,6 +65,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.lungelo.macrodime.R
+import com.lungelo.macrodime.ui.components.CardShape
+import com.lungelo.macrodime.ui.components.FoodPhoto
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -151,7 +156,12 @@ fun GroceryScreen(model: GroceryViewModel, onGoToPlan: () -> Unit) {
     ) { padding ->
         if (!state.isLoaded) return@Scaffold
         if (state.items.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                FoodPhoto(R.drawable.food_groceries, Modifier.contentWidth().height(180.dp), CardShape)
                 EmptyState(
                     Icons.Rounded.ShoppingCart,
                     "No list for this week",
@@ -173,6 +183,7 @@ fun GroceryScreen(model: GroceryViewModel, onGoToPlan: () -> Unit) {
                 val fullList = prices.shownTotal(state.items.map { it.estimatedCost })
                 val budget = prices.shown(state.weeklyBudget)
                 MacroCard(Modifier.contentWidth()) {
+                    FoodPhoto(R.drawable.food_groceries, Modifier.fillMaxWidth().height(120.dp), RoundedCornerShape(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
                             "Still to buy",

@@ -33,6 +33,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -128,8 +130,29 @@ abstract class ScreenshotBase {
         compose.setContent { MacroDimeTheme { MacroDimeRoot(container, initialTab = tab) } }
     }
 
+    protected fun waitForTag(tag: String) {
+        val deadline = System.currentTimeMillis() + 15_000
+        while (true) {
+            compose.waitForIdle()
+            if (compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()) return
+            if (System.currentTimeMillis() > deadline) throw AssertionError("\"$tag\" did not appear")
+            Thread.sleep(50)
+        }
+    }
+
     protected fun onboarding(prefix: String) {
         launch(demo = false)
+        waitForTag("intro-hook")
+        save("$prefix-onboarding-0a-hook")
+        compose.onNodeWithTag("intro-start").performClick()
+        waitForTag("intro-pains")
+        compose.onNodeWithTag("pain-HealthyFoodCostsTooMuch").performClick()
+        compose.onNodeWithTag("pain-ProteinIsHard").performClick()
+        save("$prefix-onboarding-0b-pains")
+        compose.onNodeWithTag("intro-continue").performClick()
+        waitForTag("intro-fixes")
+        save("$prefix-onboarding-0c-fixes")
+        compose.onNodeWithTag("intro-continue").performClick()
         waitForText("Welcome")
         save("$prefix-onboarding-1-welcome")
         val names = listOf("2-body", "3-goal", "4-activity", "5-diet", "6-routine", "7-budget", "8-summary")
@@ -142,7 +165,7 @@ abstract class ScreenshotBase {
 
     protected fun tabs(prefix: String) {
         launch(demo = true)
-        waitForText("Today's macros")
+        waitForText("Today's meals")
         save("$prefix-tab-1-today")
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Review swap"))
         save("$prefix-tab-1-today-scrolled")
@@ -160,6 +183,10 @@ abstract class ScreenshotBase {
         waitForText("Add to Snacks")
         compose.onNodeWithText("Done").performClick()
         compose.waitForIdle()
+        // Tomorrow: nothing planned, so the day offers to plan itself.
+        compose.onNodeWithContentDescription("Next day").performClick()
+        waitForTag("plan-day")
+        save("$prefix-tab-2-plan-empty-day")
 
         compose.onNodeWithTag("tab-Groceries").performClick()
         waitForText("Still to buy")
@@ -170,43 +197,47 @@ abstract class ScreenshotBase {
         save("$prefix-tab-4-settings")
     }
 
-    /** The paywall in a given state, full screen, top and scrolled to its terms. */
-    protected fun paywall(name: String, state: StoreState, selected: ProPlan = ProPlan.Annual, savedSoFar: String? = null) {
+    /** The paywall in a given state, full screen, top and scrolled to its plans and timeline. */
+    protected fun paywall(
+        name: String,
+        state: StoreState,
+        selected: ProPlan = ProPlan.Annual,
+        savedSoFar: String? = null,
+        reason: PaywallReason = PaywallReason.AfterOnboarding,
+    ) {
         runBlocking {
             container.repository.seedCatalog()
             DemoData.install(container.repository)
         }
         val profile = runBlocking { container.repository.currentProfile() }!!
+        val preview = runBlocking { container.repository.mealsOnce(java.time.LocalDate.now()) }
         compose.setContent {
             MacroDimeTheme {
                 PaywallContent(
-                    state = state, store = Store.GooglePlay, profile = profile, reason = PaywallReason.AfterOnboarding,
-                    savedSoFar = savedSoFar, selected = selected, onSelect = {}, onPurchase = {}, onRestore = {},
-                    onRetry = {}, onDismissMessage = {}, onOpenPrivacy = {}, onClose = {},
+                    state = state, store = Store.GooglePlay, profile = profile, reason = reason,
+                    savedSoFar = savedSoFar, preview = preview, selected = selected, remind = true,
+                    onSelect = {}, onRemindChange = {}, onPurchase = {}, onRestore = {}, onRetry = {},
+                    onDismissMessage = {}, onOpenPrivacy = {}, onOpenHealth = {}, onDeleteAll = {},
                 )
             }
         }
         waitForText("MacroDime Pro")
         save(name)
         if (state.offers.isNotEmpty()) {
-            // By index, not by node: the list runs on behind the pinned button,
-            // so "scrolled to the terms" can stop with them hidden under it.
-            // Items: headline, benefits, plans, then the timeline when there is a trial.
-            compose.onNode(hasScrollToNodeAction()).performScrollToIndex(if (state.offers[selected]?.freeTrial != null) 3 else 2)
+            // By index, not by node: the list runs on behind the pinned button.
+            // Items: photo, headline, today's meals, benefits, plans, timeline, reminder, terms.
+            compose.onNode(hasScrollToNodeAction()).performScrollToIndex(4)
             save("$name-scrolled")
         }
     }
 
     protected val ready = StoreState(StoreState.Availability.Ready, PreviewSubscriptionStore.DEFAULT_OFFERS)
 
-    /** A free account after "Not now": Today with the upgrade card, and the locked planner. */
-    protected fun freeAccount(prefix: String) {
+    /** Someone whose trial lapsed: the paywall is the way back in, welcoming them back. */
+    protected fun lapsed(prefix: String) {
         launch(demo = true, pro = PreviewSubscriptionStore())
-        waitForText("Today's macros")
-        save("$prefix-free-1-today")
-        compose.onNodeWithTag("tab-Plan").performClick()
-        waitForText("Plan meals that fit")
-        save("$prefix-free-2-plan-locked")
+        waitForText("Welcome back")
+        save("$prefix-paywall-returning")
     }
 }
 
@@ -249,7 +280,7 @@ class LightScreenshotTest : ScreenshotBase() {
     @Config(qualifiers = "w360dp-h740dp-xxhdpi")
     fun narrowPhone() {
         launch(demo = true)
-        waitForText("Today's macros")
+        waitForText("Today's meals")
         save("narrow-tab-1-today")
         compose.onNodeWithTag("tab-Plan").performClick()
         waitForText("Meal Plan")
@@ -261,7 +292,7 @@ class LightScreenshotTest : ScreenshotBase() {
     fun largeText() {
         RuntimeEnvironment.setFontScale(1.6f)
         launch(demo = true)
-        waitForText("Today's macros")
+        waitForText("Today's meals")
         save("large-text-tab-1-today")
         compose.onNodeWithTag("tab-Plan").performClick()
         waitForText("Meal Plan")
@@ -272,7 +303,11 @@ class LightScreenshotTest : ScreenshotBase() {
     fun paywall() = paywall("light-paywall", ready)
 
     @Test
-    fun paywallMonthly() = paywall("light-paywall-monthly", ready, selected = ProPlan.Monthly)
+    fun paywallMonthly() = paywall(
+        "light-paywall-monthly",
+        StoreState(StoreState.Availability.Ready, PreviewSubscriptionStore.WITH_MONTHLY),
+        selected = ProPlan.Monthly,
+    )
 
     /** Someone whose trial lapsed, shown their own savings first. */
     @Test
@@ -282,7 +317,7 @@ class LightScreenshotTest : ScreenshotBase() {
     fun paywallWithoutGooglePlay() = paywall("light-paywall-unavailable", StoreState(StoreState.Availability.Unavailable))
 
     @Test
-    fun freeAccount() = freeAccount("light")
+    fun lapsed() = lapsed("light")
 
     @Test
     fun trialReminder() {
@@ -321,5 +356,5 @@ class DarkScreenshotTest : ScreenshotBase() {
     fun paywall() = paywall("dark-paywall", ready)
 
     @Test
-    fun freeAccount() = freeAccount("dark")
+    fun lapsed() = lapsed("dark")
 }

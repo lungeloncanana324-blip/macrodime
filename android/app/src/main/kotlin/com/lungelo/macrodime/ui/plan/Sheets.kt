@@ -146,7 +146,7 @@ fun SwapReviewContent(swap: MealSwap, onApply: () -> Unit, onDismiss: () -> Unit
                             Icon(
                                 if (adjustment.isIncrease) Icons.Rounded.ArrowCircleUp else Icons.Rounded.ArrowCircleDown,
                                 contentDescription = if (adjustment.isIncrease) "More" else "Less",
-                                tint = if (adjustment.isIncrease) Brand.colors.gold else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (adjustment.isIncrease) Brand.colors.accent else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp),
                             )
                             Spacer(Modifier.width(8.dp))

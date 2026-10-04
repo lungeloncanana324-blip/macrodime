@@ -2,7 +2,8 @@
  * OnboardingScreen.kt
  * MacroDime
  *
- * The multi-step wizard. Port of MacroDime/Views/OnboardingView.swift.
+ * The multi-step wizard. Port of MacroDime/Views/OnboardingView.swift, with
+ * the three intro screens in front of it on first run (IntroScreens.kt).
  *
  * The summary step is the point of the whole flow: the user sees their real
  * TDEE, targets and daily cost estimate *before* committing, so the numbers
@@ -18,6 +19,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import com.lungelo.macrodime.ui.components.CardShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +66,8 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -143,6 +149,13 @@ fun OnboardingScreen(model: OnboardingViewModel, onClose: (() -> Unit)?, onSaved
         if (!model.goBack()) onClose?.invoke()
     }
 
+    when (model.step) {
+        OnboardingViewModel.Step.Hook -> return HookScreen(onStart = model::advance)
+        OnboardingViewModel.Step.Pains -> return PainsScreen(model.pains, model::togglePain, onBack = { model.goBack() }, onContinue = model::advance)
+        OnboardingViewModel.Step.Fixes -> return FixesScreen(model.pains, onBack = { model.goBack() }, onContinue = model::advance)
+        else -> Unit
+    }
+
     // The wizard runs before a profile exists, so it provides the draft's
     // currency rather than reading one from the store.
     CompositionLocalProvider(LocalCurrency provides model.currency) {
@@ -170,6 +183,8 @@ fun OnboardingScreen(model: OnboardingViewModel, onClose: (() -> Unit)?, onSaved
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp)
                             .semantics { contentDescription = "Setup progress" },
+                        color = Brand.colors.accent,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         drawStopIndicator = {},
                     )
                 }
@@ -193,7 +208,9 @@ fun OnboardingScreen(model: OnboardingViewModel, onClose: (() -> Unit)?, onSaved
                             Text(step.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         when (step) {
-                            OnboardingViewModel.Step.Welcome -> WelcomeStep()
+                            // Drawn by IntroScreens before this scaffold is reached.
+                            OnboardingViewModel.Step.Hook, OnboardingViewModel.Step.Pains, OnboardingViewModel.Step.Fixes -> Unit
+                            OnboardingViewModel.Step.Welcome -> WelcomeStep(model)
                             OnboardingViewModel.Step.BodyMetrics -> BodyMetricsStep(model)
                             OnboardingViewModel.Step.Goal -> GoalStep(model)
                             OnboardingViewModel.Step.Activity -> ActivityStep(model)
@@ -260,11 +277,17 @@ private fun Footer(model: OnboardingViewModel, onSaved: () -> Unit) {
                 enabled = model.canAdvance,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("continue"),
             ) {
+                // Planning a week takes a moment on a phone: say what is happening.
+                if (model.isSaving) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
+                    Spacer(Modifier.width(12.dp))
+                }
                 Text(
                     when {
                         !model.isLastStep -> "Continue"
-                        model.isEditing -> "Save changes"
-                        else -> "Start Planning"
+                        model.isEditing -> if (model.isSaving) "Saving" else "Save changes"
+                        model.isSaving -> "Building your week"
+                        else -> "Build my week"
                     },
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -275,41 +298,42 @@ private fun Footer(model: OnboardingViewModel, onSaved: () -> Unit) {
 
 // Steps
 
-private data class WelcomePoint(val title: String, val detail: String, val icon: ImageVector)
-
-private val welcomePoints = listOf(
-    WelcomePoint(
-        "Targets from real science",
-        "Mifflin-St Jeor BMR, your activity multiplier, and a protein target set from your body weight.",
-        Icons.Rounded.Functions,
-    ),
-    WelcomePoint(
-        "Priced before you shop",
-        "Every meal carries an estimated cost, checked against a daily allowance you set.",
-        Icons.Rounded.ShoppingCart,
-    ),
-    WelcomePoint(
-        "Low-cost swaps",
-        "Swap an expensive ingredient for a budget one that keeps your macros within 10%.",
-        Icons.Rounded.Autorenew,
-    ),
-    WelcomePoint(
-        "Progress beyond BMI",
-        "Waist measurements and photos, because BMI cannot tell muscle from fat.",
-        Icons.Rounded.PhotoCamera,
-    ),
+/** The six questions ahead, so "about a minute" can be checked at a glance. */
+private val questionsAhead = listOf(
+    "About you" to "Height, weight and age",
+    "Your goal" to "Lose fat or build muscle",
+    "How active you are" to "How much you move in a week",
+    "What you eat" to "Your diet, and anything to avoid",
+    "How you eat" to "Meals a day and time to cook",
+    "Your budget" to "What you can spend on food a day",
 )
 
 @Composable
-private fun WelcomeStep() {
-    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
-        welcomePoints.forEach { point ->
-            Row(verticalAlignment = Alignment.Top) {
-                Icon(point.icon, contentDescription = null, tint = Brand.colors.gold, modifier = Modifier.size(30.dp))
-                Spacer(Modifier.width(16.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(point.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(point.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun WelcomeStep(model: OnboardingViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        OutlinedTextField(
+            value = model.displayName,
+            onValueChange = { model.displayName = it },
+            label = { Text("What should we call you?") },
+            placeholder = { Text("Optional") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth().testTag("name"),
+        )
+        MacroCard {
+            questionsAhead.forEachIndexed { index, (title, detail) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(30.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("${index + 1}", style = MaterialTheme.typography.labelLarge)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(title, style = MaterialTheme.typography.titleSmall)
+                        Caption(detail)
+                    }
                 }
             }
         }
@@ -330,15 +354,18 @@ private fun BodyMetricsStep(model: OnboardingViewModel) {
                 }
             }
 
-            OutlinedTextField(
-                value = model.displayName,
-                onValueChange = { model.displayName = it },
-                label = { Text("Name") },
-                placeholder = { Text("Optional") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // Asked on Welcome the first time; the editor starts here, so it asks again.
+            if (model.isEditing) {
+                OutlinedTextField(
+                    value = model.displayName,
+                    onValueChange = { model.displayName = it },
+                    label = { Text("Name") },
+                    placeholder = { Text("Optional") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             if (model.measurementSystem == MeasurementSystem.Metric) {
                 NumberField("Height", model.heightText, "cm", model::updateHeightText, decimal = false, tag = "height")
@@ -447,7 +474,7 @@ private fun DietStep(model: OnboardingViewModel) {
             val removed = model.excludedFoodCount
             Caption(
                 if (removed == 0) "Nothing is excluded at the moment." else "Removes $removed of ${FoodCatalog.all.size} ingredients from every suggestion.",
-                color = if (removed == 0) MaterialTheme.colorScheme.onSurfaceVariant else Brand.colors.gold,
+                color = if (removed == 0) MaterialTheme.colorScheme.onSurfaceVariant else Brand.colors.accent,
             )
             // The escape hatch for "I know it fits, I still will not eat it",
             // offered once something else is excluded, so the step stays short
@@ -574,10 +601,11 @@ private fun SummaryStep(model: OnboardingViewModel) {
     var isDisclaimerExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        MacroCard {
-            CardTitle("Daily targets")
-            MacroRingRow(prescription.targets, prescription.targets)
-        }
+        TargetsHero(
+            calories = DisplayFormat.calories(prescription.targets.calories),
+            protein = DisplayFormat.grams(prescription.targets.protein),
+            allowance = prices.format(model.dailyFoodBudget),
+        )
 
         MacroCard {
             CardTitle("How we got there")
@@ -639,14 +667,30 @@ private fun SummaryStep(model: OnboardingViewModel) {
 
 // Pieces
 
+/** The plan's three numbers, large, on one dark card: what every day will be built to. */
+@Composable
+private fun TargetsHero(calories: String, protein: String, allowance: String) {
+    Surface(Modifier.fillMaxWidth().testTag("targets-hero"), shape = CardShape, color = MaterialTheme.colorScheme.primary) {
+        Row(Modifier.padding(20.dp)) {
+            listOf("Calories" to calories, "Protein" to protein, "Food budget" to allowance).forEach { (label, value) ->
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f))
+                    Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary, maxLines = 1)
+                    Text("a day", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f))
+                }
+            }
+        }
+    }
+}
+
 /** Always-visible preview, so the user watches the numbers respond as they change an input. */
 @Composable
 private fun LivePreviewStrip(model: OnboardingViewModel) {
     val prescription = model.prescription
     MacroCard(Modifier.alpha(if (model.validationError == null) 1f else 0.4f), padding = 14.dp) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatTile("TDEE", DisplayFormat.calories(prescription.tdee), Modifier.weight(1f), "Maintenance", Icons.Rounded.Bolt, Brand.colors.gold)
-            StatTile("Target", DisplayFormat.calories(prescription.targets.calories), Modifier.weight(1f), model.goal.displayName, model.goal.icon, Brand.colors.gold)
+            StatTile("TDEE", DisplayFormat.calories(prescription.tdee), Modifier.weight(1f), "Maintenance", Icons.Rounded.Bolt, MaterialTheme.colorScheme.onSurfaceVariant)
+            StatTile("Target", DisplayFormat.calories(prescription.targets.calories), Modifier.weight(1f), model.goal.displayName, model.goal.icon, Brand.colors.accent)
             StatTile("Protein", DisplayFormat.grams(prescription.targets.protein), Modifier.weight(1f), "Per day", Icons.Rounded.Restaurant, Brand.colors.protein)
         }
     }

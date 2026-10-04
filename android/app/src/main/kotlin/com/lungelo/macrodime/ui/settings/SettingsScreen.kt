@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.Policy
 import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material.icons.rounded.Support
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -80,7 +81,6 @@ import com.lungelo.macrodime.data.prescription
 import com.lungelo.macrodime.domain.CurrencySettings
 import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.Money
-import com.lungelo.macrodime.domain.Paywall
 import com.lungelo.macrodime.domain.PriceBook
 import com.lungelo.macrodime.domain.Store
 import com.lungelo.macrodime.engine.DietaryFilter
@@ -92,7 +92,6 @@ import com.lungelo.macrodime.ui.components.MacroCard
 import com.lungelo.macrodime.ui.components.contentWidth
 import com.lungelo.macrodime.ui.components.openExternal
 import com.lungelo.macrodime.ui.onboarding.OnboardingViewModel
-import com.lungelo.macrodime.ui.paywall.ProIcon
 import com.lungelo.macrodime.ui.theme.Brand
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -109,7 +108,6 @@ fun SettingsScreen(
     onOpenHealth: () -> Unit,
     pro: StoreState = StoreState(),
     store: Store = Store.GooglePlay,
-    onSeePlans: () -> Unit = {},
     onManageSubscription: () -> Unit = {},
     onRestore: () -> Unit = {},
     onDeleted: () -> Unit = {},
@@ -140,7 +138,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item { ProGroup(pro, store, onSeePlans, onManageSubscription, onRestore) }
+            item { ProGroup(pro, store, onManageSubscription, onRestore) }
             item {
                 Group("Your plan") {
                     Labeled("Goal", profile.goal.displayName)
@@ -418,17 +416,18 @@ private fun ActionRow(
 private fun openLink(context: Context, url: String) = openExternal(context, url)
 
 /**
- * Pro's status and the ways in and out of it. Free accounts are offered the
- * plans and a restore; subscribers get the store's own page for managing and
- * cancelling, because the app cannot change a subscription itself.
+ * Pro's status and the way to manage it. Everyone who reaches Settings has Pro
+ * (the paywall is the way in), so this is the store's own page for managing
+ * and cancelling, because the app cannot change a subscription itself, and a
+ * restore for anyone whose subscription lapsed while the app was open.
  */
 @Composable
-private fun ProGroup(pro: StoreState, store: Store, onSeePlans: () -> Unit, onManage: () -> Unit, onRestore: () -> Unit) {
+private fun ProGroup(pro: StoreState, store: Store, onManage: () -> Unit, onRestore: () -> Unit) {
     val entitlement = pro.entitlement
     val plan = entitlement.plan
     Group(
         "MacroDime Pro",
-        footer = pro.message ?: if (pro.isPro) "Payments, renewal and cancellation are handled by ${store.displayName}." else Paywall.UPGRADE_DETAIL,
+        footer = pro.message ?: "Payments, renewal and cancellation are handled by ${store.displayName}.",
     ) {
         Labeled(
             "Plan",
@@ -446,10 +445,8 @@ private fun ProGroup(pro: StoreState, store: Store, onSeePlans: () -> Unit, onMa
         if (entitlement.isPro && !entitlement.willRenew) Labeled("Renewal", "Cancelled")
         HorizontalDivider()
         if (pro.isPro) {
-            ActionRow("Manage subscription", ProIcon, onClick = onManage, external = true, tag = "manage-subscription")
+            ActionRow("Manage subscription", Icons.Rounded.WorkspacePremium, onClick = onManage, external = true, tag = "manage-subscription")
         } else {
-            ActionRow("See Pro plans", ProIcon, onClick = onSeePlans, chevron = true, tag = "see-pro")
-            HorizontalDivider()
             ActionRow("Restore purchases", Icons.Rounded.Restore, onClick = onRestore, tag = "restore-purchases")
         }
     }

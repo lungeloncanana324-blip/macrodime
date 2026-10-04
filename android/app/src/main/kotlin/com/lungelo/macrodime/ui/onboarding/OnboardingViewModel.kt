@@ -39,6 +39,8 @@ import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.EatingSchedule
 import com.lungelo.macrodime.domain.FitnessGoal
 import com.lungelo.macrodime.domain.FoodExclusion
+import com.lungelo.macrodime.domain.Intro
+import com.lungelo.macrodime.domain.PainPoint
 import com.lungelo.macrodime.domain.MeasurementSystem
 import com.lungelo.macrodime.domain.PrepEffort
 import com.lungelo.macrodime.domain.UnitConversion
@@ -47,23 +49,40 @@ import com.lungelo.macrodime.engine.DietaryFilter
 import com.lungelo.macrodime.engine.FoodCatalog
 import com.lungelo.macrodime.engine.PlanAudit
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.Locale
 
 class OnboardingViewModel(private val repository: MacroDimeRepository) : ViewModel() {
 
-    enum class Step(val title: String, val subtitle: String) {
-        Welcome("Welcome", "Real nutrition targets that fit what you can actually spend"),
-        BodyMetrics("About You", "Used to calculate your metabolic rate"),
-        Goal("Your Goal", "This sets your calorie adjustment and protein target"),
-        Activity("Activity Level", "Be honest, most people overestimate this one"),
-        Diet("What You Eat", "So the plan never suggests something you will not eat"),
-        Routine("How You Eat", "How many meals, and how much cooking you will actually do"),
-        Budget("Your Budget", "Every meal suggestion respects this constraint"),
-        Summary("Your Plan", "Here is what the numbers say, and what does not add up"),
+    /**
+     * The wizard. The first three steps come before any question: what the app
+     * is, what has been getting in the way, and how the app answers that. They
+     * only run on first launch; editing a profile starts at the body metrics.
+     */
+    enum class Step(val title: String, val subtitle: String, val isIntro: Boolean = false) {
+        Hook(Intro.HEADLINE, Intro.SUBHEADLINE, isIntro = true),
+        Pains(Intro.PAINS_TITLE, Intro.PAINS_SUBTITLE, isIntro = true),
+        Fixes("", Intro.FIXES_SUBTITLE, isIntro = true),
+        Welcome("Welcome", "Six quick questions, then your week is planned."),
+        BodyMetrics("About you", "Used to work out what your body burns"),
+        Goal("Your goal", "This sets your calories and your protein"),
+        Activity("How active are you?", "Be honest: most people overestimate this one"),
+        Diet("What you eat", "So the plan never suggests something you won't eat"),
+        Routine("How you eat", "How many meals, and how much cooking you'll really do"),
+        Budget("Your budget", "Every meal in your plan is priced against this"),
+        Summary("Your plan", "Here's what the numbers say, and anything that doesn't add up"),
     }
 
-    var step by mutableStateOf(Step.Welcome)
+    var step by mutableStateOf(Step.Hook)
         private set
+
+    /** What has been getting in the way, from the intro. Answered on the next screen; not stored. */
+    var pains by mutableStateOf(emptySet<PainPoint>())
+        private set
+
+    fun togglePain(pain: PainPoint) {
+        pains = if (pain in pains) pains - pain else pains + pain
+    }
 
     /** The stored profile being edited, or null on first run. */
     private var existing: UserProfileEntity? = null
@@ -303,13 +322,15 @@ class OnboardingViewModel(private val repository: MacroDimeRepository) : ViewMod
             else -> true
         }
 
-    /** The first step this draft can go back to: Welcome on first run, body metrics when editing. */
-    private val firstStep: Step get() = if (isEditing) Step.BodyMetrics else Step.Welcome
+    /** The first step this draft can go back to: the intro on first run, body metrics when editing. */
+    private val firstStep: Step get() = if (isEditing) Step.BodyMetrics else Step.Hook
 
     val isFirstStep: Boolean get() = step == firstStep
     val isLastStep: Boolean get() = step == Step.Summary
 
-    val progress: Float get() = step.ordinal.toFloat() / (Step.entries.size - 1)
+    /** Through the questions only: the intro is not part of "how much is left". */
+    val progress: Float
+        get() = if (step.isIntro) 0f else (step.ordinal - Step.Welcome.ordinal).toFloat() / (Step.Summary.ordinal - Step.Welcome.ordinal)
 
     fun advance() {
         if (!canAdvance) return
@@ -353,9 +374,21 @@ class OnboardingViewModel(private val repository: MacroDimeRepository) : ViewMod
                     hasCompletedOnboarding = true,
                     hasAcknowledgedHealthDisclaimer = hasAcknowledgedDisclaimer,
                 ).withDietaryProfile(dietaryProfile)
+                val firstRun = !isEditing
+                if (firstRun) {
+                    // The week is planned before the profile is saved, because
+                    // saving it moves the app on to the paywall at once, and the
+                    // paywall opens on this week. A failure costs the starter
+                    // plan, not the profile: every empty day still offers
+                    // "Plan this day for me".
+                    runCatching { repository.planEmptyDays(profile, LocalDate.now()) }
+                    // Told before the save for the same reason: the paywall must
+                    // open as "Your week is ready", never as "Welcome back".
+                    onSaved()
+                }
                 repository.saveProfile(profile)
                 existing = profile
-                onSaved()
+                if (!firstRun) onSaved()
             } catch (error: Exception) {
                 saveError = error.message ?: "Your profile could not be saved."
             } finally {

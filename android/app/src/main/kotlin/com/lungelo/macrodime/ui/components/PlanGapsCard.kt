@@ -102,6 +102,6 @@ private fun GapRow(gap: PlanGap) {
 @Composable
 private fun tint(severity: PlanGap.Severity): Color = when (severity) {
     PlanGap.Severity.Info -> MaterialTheme.colorScheme.onSurfaceVariant
-    PlanGap.Severity.Caution -> Brand.colors.gold
+    PlanGap.Severity.Caution -> Brand.colors.caution
     PlanGap.Severity.Blocking -> Brand.colors.overBudget
 }

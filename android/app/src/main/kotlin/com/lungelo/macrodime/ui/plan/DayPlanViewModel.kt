@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.util.UUID
@@ -167,6 +168,15 @@ class DayPlanViewModel(
         date.value = day
     }
 
+    /**
+     * Moves the selected day by [days] from the day already selected here, not
+     * from the one the screen last drew: three quick taps on "Next day" are
+     * three days, even before the first has finished loading.
+     */
+    fun shiftDate(days: Long) {
+        date.update { it.plusDays(days) }
+    }
+
     /** Ranked alternatives for one ingredient, for the per-portion picker. */
     fun alternatives(portion: Portion, meal: MealItem): List<PortionSwap> = engine.rankedReplacements(portion, meal)
 
@@ -180,6 +190,16 @@ class DayPlanViewModel(
 
     fun updateServings(portionId: UUID, servings: Double) = perform("Could not update that portion") {
         repository.updateServings(portionId, servings)
+    }
+
+    /**
+     * Fills the selected day with the starter plan, for the person's targets,
+     * allowance and diet. Only ever an empty day: the repository leaves any
+     * day that holds food alone.
+     */
+    fun planThisDay() = perform("Could not plan this day") {
+        val profile = repository.currentProfile() ?: return@perform
+        repository.planEmptyDays(profile, date.value, days = 1)
     }
 
     /** Commits a whole-meal swap the user reviewed. */

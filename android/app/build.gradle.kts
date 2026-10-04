@@ -119,11 +119,13 @@ android {
 // is that the app holds no permission to send anything: no INTERNET, no
 // storage, nothing. A library can merge a permission into the manifest without
 // anyone noticing, so the release manifest is checked here and the build fails
-// if one appears. Two entries are allowed: the signature-level permission
+// if one appears. Four entries are allowed: the signature-level permission
 // androidx.core declares for the app's own unexported receivers, which grants
-// no capability, and com.android.vending.BILLING, which Play Billing declares
-// so the app can talk to the Play Store app about MacroDime Pro. Neither lets
-// the app reach the network; there is still no INTERNET.
+// no capability; com.android.vending.BILLING, which Play Billing declares so
+// the app can talk to the Play Store app about MacroDime Pro; and
+// POST_NOTIFICATIONS with RECEIVE_BOOT_COMPLETED, for the local trial
+// reminder the paywall promises. None lets the app reach the network; there
+// is still no INTERNET.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
@@ -140,6 +142,8 @@ androidComponents {
                 val allowed = setOf(
                     "${applicationId.get()}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
                     "com.android.vending.BILLING",
+                    "android.permission.POST_NOTIFICATIONS",
+                    "android.permission.RECEIVE_BOOT_COMPLETED",
                 )
                 val unexpected = requested - allowed
                 if (unexpected.isNotEmpty()) {

@@ -67,10 +67,13 @@ class PreviewSubscriptionStore(
     }
 
     companion object {
+        /** What Play Console sells: the yearly plan with its 14-day trial, and nothing else. */
         val DEFAULT_OFFERS = mapOf(
             ProPlan.Annual to ProOffer(ProPlan.Annual, 29.99, "USD", StorePeriod.parse("P2W")),
-            ProPlan.Monthly to ProOffer(ProPlan.Monthly, 5.99, "USD"),
         )
+
+        /** For the case where a monthly base plan is switched on as well: the app shows it as a second choice. */
+        val WITH_MONTHLY = DEFAULT_OFFERS + (ProPlan.Monthly to ProOffer(ProPlan.Monthly, 5.99, "USD"))
 
         /** A subscriber, for screenshots of the full app. */
         fun subscriber() = PreviewSubscriptionStore(Entitlement(isPro = true, plan = ProPlan.Annual, verifiedAtMillis = System.currentTimeMillis()))
