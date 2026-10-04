@@ -24,11 +24,11 @@ build and sign it is in `android/README.md`; every Play Console answer is in
 | P2 | **Upload key** | Done 2026-10-03: `android/macrodime-upload.jks` with its password in `android/keystore.properties`, both git-ignored. Back both up outside the repository. The first signed bundle (versionCode 1) is built; the next upload needs `-PversionCode=2` | Lungelo, back-up only | 5 min |
 | P3 | **First run on a real phone** | Upload the signed bundle to the internal testing track and install it from the Play link (steps in `docs/play-store-listing.md`), or sideload `android/build/MacroDime-test.apk`. The app has launched on an emulator, never on hardware | Lungelo | 30 min |
 | P4 | **Privacy policy URL live** | Done 2026-10-03: `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` returns the policy. Use it in Play Console's store listing and in App content, Privacy policy | done | 0 |
-| P5 | **App content declarations** | Data safety, health apps, target audience 18+, content rating, ads, financial features: answers written in `docs/play-store-listing.md` | Lungelo | 45 min |
+| P5 | **App content declarations** | Data safety, health apps, target audience 18+, content rating, ads, financial features: answers written in `docs/play-store-listing.md`. App access is **restricted** since the paywall became the way in (Google requires reviewers to be given a way past a subscription paywall): paste the reviewer instructions from that file, under App access instructions | Lungelo | 45 min |
 | P6 | **Public contact email** | Play shows it on the listing | Lungelo | 5 min |
 | P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
 | P8 | **MacroDime Pro in Play Console** | Added 2026-10-03, built and tested in the app. Needs a payments profile, then a bundle with Play Billing uploaded (version code 2 or higher; version code 1 has none), then the subscription `pro` with base plans `annual` and `monthly` and the 14-day trial offer on `annual`, then license testers. Exact steps and ids: `docs/play-store-listing.md`, Pricing and MacroDime Pro. Until the subscription exists the paywall says plans could not be loaded | Lungelo | 45 min |
-| P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and restart it with the test card. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
+| P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and resubscribe with the test card. Having had the trial, they see "Subscribe for $29.99 a year" the second time, and Google's sheet shows the first trial as 3 minutes; neither is a bug or a real charge. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
 | P9 | **Data safety with Play Billing** | Google's definitions support keeping "No data collected" (the app reads only whether a subscription is active, on the phone, and sends nothing), but it is a judgement on Google's wording; the cautious alternative is in `docs/play-store-listing.md` | Lungelo | 10 min |
 
 ### 2026-10-04: the planned week, the trial-only paywall, the new look (Android)
@@ -61,10 +61,38 @@ before Welcome; the look is sleek and food focused. What was built, and why:
   photographs generated for the app (no people, no lettering), on the intro,
   the paywall and every meal.
 
+**Subscription review, 2026-10-04 (later the same day).** A review against
+Google Play's subscriptions policy and the Play Billing docs found three things,
+now fixed on Android with tests:
+
+- **App access.** The listing said all functionality was open; with the
+  paywall as the way in, Google requires reviewer instructions (P5).
+- **"A subscription is required to use MacroDime."** Play's policy asks every
+  offer to say whether a subscription is needed to use the app. The paywall
+  has no close button, so it now says so above the plan and at the start of
+  the terms, and the store description opens its Subscription paragraph with it.
+- **Account hold.** Play Billing (8.1 and later) leaves suspended
+  subscriptions (a failed payment, or a pause) out of the purchase query
+  unless asked, so the app's suspended-purchase rule never ran and a
+  subscriber whose card was declined was offered a new subscription. The
+  query now asks; such a person sees "Your subscription is on hold" and
+  "Fix it in Google Play", with nothing sold. Google Play's own payment
+  message (in-app messaging, transactional) is requested each time the app
+  comes to the front, which covers the grace period, when Pro still works.
+
+Also: the trial reminder notification now reads true whether or not the
+trial was cancelled in Google Play since the app was last opened. Known
+limit, unchanged: the trial's end date is recorded only on the phone that
+started the trial, so after a reinstall mid-trial there is no reminder (Play
+does not tell an app which offer a purchase used). Verified against
+PreviewSubscriptionStore and the core rules only; the on-hold screen has not
+met a real account hold yet (see the phone checks in play-store-listing.md).
+
 **What iOS no longer matches** (port when iOS work resumes, each with its
 tests): the plan generator, the culinary families (and with them the README's
 salmon table, which still lists the cross-family swaps), the trial-only
-paywall and the reminder notification, the intro screens, and the theme. Until
+paywall and the reminder notification, the subscription-required line and the
+on-hold screen, the intro screens, and the theme. Until
 then the Kotlin parity test checks only the three salmon swaps both engines
 still agree on.
 

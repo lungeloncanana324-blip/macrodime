@@ -60,7 +60,7 @@ it, which would leave it on that screen.
 | --- | --- | --- |
 | 0 | Open the app, pick two of the five problems, continue | The photo intro, then your two picks answered, and only those, then Welcome |
 | 1 | Finish onboarding, ticking the health acknowledgement | Build my week unlocks only after the tick; "Your week is ready" shows your targets, budget and today's planned meals with their cost |
-| 1b | Start the trial | Android 13 and later ask about notifications first; then Google Play's sheet; then Today opens with every meal of the day planned |
+| 1b | Start the trial | Android 13 and later ask about notifications first; then Google Play's sheet (for a license tester it shows Google's 3-minute test trial; customers get 14 days); then Today opens with every meal of the day planned |
 | 2 | Plan tab: add a food, then change its servings | Totals, rings and the day's cost move together, and each meal's header is exactly its lines added up |
 | 2b | Plan tab: move a week ahead | "Nothing planned for this day" with Plan this day for me; tapping it fills the day |
 | 3 | Open a meal's swaps, apply one | The saving shown on the card is the saving applied; macros stay within the stated tolerance |

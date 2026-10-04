@@ -85,7 +85,7 @@ No account. No ads. No analytics. No internet permission at all. Everything you 
 
 Subscription
 
-MacroDime starts with a 14-day free trial of MacroDime Pro. Nothing is charged on the day you start, the app reminds you two days before the trial ends, and then MacroDime Pro renews every year at the price shown in Google Play until you cancel. Cancel in Google Play before the trial ends and you are not charged. A subscription is required to use the meal plan after the trial.
+A subscription is required to use MacroDime. It starts with a 14-day free trial of MacroDime Pro, which needs a payment method on your Google account. Nothing is charged on the day you start, the app reminds you two days before the trial ends, and then MacroDime Pro renews every year at the price shown in Google Play until you cancel. Cancel in Google Play before the trial ends and you are not charged.
 
 MacroDime estimates energy needs from population averages. Your real metabolic rate can differ by 10% or more. It is not a medical device, it does not diagnose or treat anything, and it is for adults aged 18 and over. Prices are US supermarket averages; you can show them in your own currency at an exchange rate you enter.
 ```
@@ -113,11 +113,28 @@ Screenshot captions, in tab order, if you add text frames:
 | --- | --- | --- |
 | Privacy policy | The URL above | Required for every app, including one that collects nothing |
 | Ads | No, my app does not contain ads | |
-| App access | All functionality is available without special access | No account, no login |
+| App access | **All or some functionality is restricted**, with the instructions below | No account or login, but everything after setup is behind the paywall, and Google requires reviewers to be given a way past a subscription paywall |
 | Content rating | Complete the IARC questionnaire as below | |
 | Target audience | **18 and over only** | The app prescribes calorie deficits and refuses any age under 18. Choosing only 18+ also keeps it outside the Families policy |
 | News app | No | |
 | COVID-19 contact tracing and status | Not a contact tracing or status app | |
+
+### App access instructions
+
+Google's rule: "If your app does not require sign-in details but you have
+functionalities or content behind a subscription paywall, please provide
+additional instructions or access details that will allow us to fully and
+freely access and review the app behind the paywall." Add one entry with no
+username or password, and paste this into the instructions (492 characters):
+
+```
+MacroDime has no account or login. Everything after setup is behind a subscription paywall. To review: 1. Complete setup with any values (for example weight 82 kg) and tick the acknowledgement. 2. On the paywall tap Start my 14-day free trial. Nothing is charged during the trial. 3. To avoid any charge, cancel in Play Store, Payments and subscriptions, Subscriptions before the trial ends. Health information, the privacy policy and Delete all my data are in the paywall's menu (top right).
+```
+
+The trial is free, so this gives reviewers full access without paying. If a
+review is still rejected for App access, the fallback is a reviewer code that
+unlocks Pro on one phone; that needs a new build, so wait for the rejection
+before adding one.
 | Data safety | As below | |
 | Government apps | No | |
 | Financial features | My app does not provide any financial features | A food budget is planning, not a financial service |
@@ -200,8 +217,9 @@ can sell subscriptions), and sells one subscription, MacroDime Pro: a 14-day
 free trial that renews into the yearly plan. Since 2026-10-04 there is no free
 tier: after onboarding the paywall is the way into the app. Why:
 `docs/MONETISATION.md`. Because a subscription is required to use the app,
-Play's policy requires the listing to say so; the full description's
-Subscription paragraph does.
+Play's policy requires the offer to say so: the full description's
+Subscription paragraph opens with it, and the paywall says it above the plan
+and again at the start of the terms.
 
 ### Setting it up in Play Console, in this order
 
@@ -239,10 +257,14 @@ Subscription paragraph does.
    nothing with Google's test card, but Google runs their subscriptions on a
    fast clock (verified 2026-10-04 in Google's billing test documentation):
    the free trial lasts 3 minutes, the yearly plan renews every 30 minutes,
-   and after 6 renewals the subscription ends. So roughly every 3.5 hours a
-   tester meets the paywall again and taps Start with the test card, free.
-   Tell testers this before the 14 days start, so they do not read it as a
-   bug.
+   and after 6 renewals the subscription ends. Google Play's purchase sheet
+   shows that test trial as 3 minutes; customers get the 14 days set here, and
+   the app's own screens can only state a trial in days, weeks, months or
+   years. So roughly every 3.5 hours a tester meets the paywall again. By then
+   they have had the trial, so the button reads "Subscribe for $29.99 a year"
+   (or the local price), and the test card is still never charged. Tell
+   testers both things before the 14 days start, so they do not read either
+   as a bug, or as a real charge.
 
 The app reads every price, the trial's length and the eligibility from Play,
 so changing a price or the trial later needs no new build.
@@ -252,9 +274,10 @@ so changing a price or the trial later needs no new build.
 | Do this | Expect |
 | --- | --- |
 | Open the app | The photo intro: "Hit your macros on a real budget.", then what has been getting in the way, then the answers to what you picked |
-| Finish onboarding | "Your week is ready": your own targets and budget, today's planned meals with their cost, Yearly with "14 days free", the timeline (today, day 12 reminder, day 14) and "Start my 14-day free trial" over "No payment today". No close button |
+| Finish onboarding | "Your week is ready": your own targets and budget, today's planned meals with their cost, "A subscription is required to use MacroDime." over Yearly with "14 days free", the timeline (today, day 12 reminder, day 14) and "Start my 14-day free trial" over "No payment today". No close button |
 | Start the trial | On Android 13 and later, the notification permission first (for the reminder), then Google Play's own purchase sheet showing the trial and the price after it; after confirming, Today opens on the planned week |
 | Settings | "Pro, yearly", the date the trial ends, Manage subscription |
 | Manage subscription | Opens Google Play's subscription page for MacroDime |
 | Cancel in Play, return to the app | Pro stays until the trial ends; Today's reminder (last two days) says you won't be charged |
 | Uninstall, reinstall, onboard again | No paywall: the store already knows the account has Pro |
+| As a license tester, in Play's subscriptions page switch the payment method to "Test card, always declines" and wait for the next renewal (about 30 minutes) | During the grace period (about 5 minutes) Pro stays and Google Play shows its own payment message over the app; then account hold: "Your subscription is on hold" with "Fix it in Google Play", and no new subscription offered |

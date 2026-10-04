@@ -27,8 +27,9 @@ apps with hard paywalls tend to be ones with strong intent behind each install.
 
 1. A trial is not a free plan. Starting it is a Google Play purchase: a payment
    method on the account and consent to the yearly price. Anyone without one
-   cannot use the app at all. Play's policy requires the listing to say that a
-   subscription is required, and it does.
+   cannot use the app at all. Play's policy requires the offer to say that a
+   subscription is required to use the app: the listing opens its Subscription
+   paragraph with it, and the paywall says it above the plan and in the terms.
 2. The biggest leak is day zero. Blinkist found 33% of all trial cancellations
    happened right after the trial started, from people afraid of forgetting.
    Their fix, promising a reminder before the trial ends and keeping the
@@ -182,7 +183,7 @@ Then, for the subscription:
 | Subscription group | `MacroDime Pro` |
 | Monthly product | `com.lungelo.macrodime.pro.monthly` |
 | Annual product | `com.lungelo.macrodime.pro.annual` |
-| Annual price | about ten months of the monthly price |
+| Annual price | $29.99, the same as Google Play (the table under Revised 2026-10-03) |
 | Introductory offer | optional, and simplest to put on the annual only |
 | Reference name | the same string as the product id, so the two cannot drift |
 | Localisations | English (South Africa) and English (United States) |
