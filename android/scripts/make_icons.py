@@ -1,94 +1,195 @@
 #!/usr/bin/env python3
-"""Builds the Android launcher icon and the Play Store icon from the iOS icon.
+"""Draws the MacroDime icon everywhere it appears, from one set of shapes.
 
-The iOS icon is one flat 1024 px square: a gold mark on a near-black gradient.
-Android draws icons as two layers (adaptive icons) that the launcher masks to
-its own shape and may move independently, so a flat square would show a seam.
-This separates the two: the gold mark becomes the foreground layer, with its
-anti-aliased edge turned into transparency, and the gradient is drawn as its own
-background layer (res/drawable/ic_launcher_background.xml). The same mask in
-white is the monochrome layer that Android 13 tints for themed icons.
+The mark is the Today screen's ink card in miniature: a white coin with a fork
+on it (the dime, and the food), ringed by the green progress arc the app uses
+for what is left of the day. Colours are the app's own tokens (ui/theme):
+ink, paper, and basil as the dark theme draws it, bright enough to read on ink.
 
-    python3 android/scripts/make_icons.py
+Every shape is defined once, below, on Android's 108-unit adaptive canvas, and
+written out as:
 
-Rerun it if the iOS icon changes. Needs Pillow.
+  res/drawable/ic_launcher_background.xml    ink, the layer the launcher masks
+  res/drawable/ic_launcher_foreground.xml    ring, arc, coin and fork
+  res/drawable/ic_launcher_monochrome.xml    arc and fork, for Android 13
+                                             themed icons, which tint one colour
+  res/drawable/ic_notification.xml           the same, cropped for a 24 dp
+                                             status bar icon
+  play-store/icon.svg                        full bleed, cropped as a launcher
+                                             crops (the middle 72 units)
+
+and, through headless Edge, rendered from icon.svg to:
+
+  play-store/icon-512.png                    Play Console (it rounds the corners)
+  MacroDime/.../AppIcon-1024.png             iOS (no transparency allowed)
+  docs/apple-touch-icon.png, docs/favicon-32.png, docs/favicon.svg
+
+    python android/scripts/make_icons.py
+
+Needs Pillow and Microsoft Edge. Everything sits inside a 58-unit circle, so
+no launcher mask, round or square, clips the mark.
 """
 
+import math
+import shutil
+import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "MacroDime" / "Resources" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon-1024.png"
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
 STORE = ROOT / "android" / "play-store"
+DOCS = ROOT / "docs"
+IOS_ICON = ROOT / "MacroDime" / "Resources" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon-1024.png"
 
-GOLD = (227, 180, 92)
-# Background green channel at the top and bottom of the iOS gradient.
-BG_TOP_G, BG_BOTTOM_G = 22, 9
-# Coverage below this (out of 255) is gradient noise, not the mark.
-NOISE_FLOOR = 12
+INK = "#161614"
+PAPER = "#F6F4EF"
+TRACK = "#2C2B28"
+ARC = "#6CC791"
+C = 54.0
 
-# Adaptive icon layers are 108 dp; launchers show the middle 72 dp and only
-# guarantee a 66 dp circle. The mark's knobs reach 37% of the iOS square from
-# its centre, so drawing the square at 78 dp keeps the whole mark inside a
-# 58 dp circle: clear of the safe zone's edge, with margin a circular mask needs.
-LAYER_DP = 108
-SQUARE_DP = 78
-DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
-
-
-def mark_alpha(source: Image.Image) -> Image.Image:
-    """The gold mark's coverage, 0 to 255, recovered from the green channel."""
-    rgb = source.convert("RGB")
-    width, height = rgb.size
-    alpha = Image.new("L", rgb.size)
-    pixels = rgb.load()
-    out = alpha.load()
-    for y in range(height):
-        background = BG_TOP_G + (BG_BOTTOM_G - BG_TOP_G) * y / (height - 1)
-        span = GOLD[1] - background
-        for x in range(width):
-            coverage = (pixels[x, y][1] - background) / span
-            value = max(0, min(255, round(coverage * 255)))
-            # The gradient is estimated, not exact, so plain background reads as
-            # a few percent coverage. Below the threshold it is background.
-            out[x, y] = 0 if value < NOISE_FLOOR else value
-    return alpha
+RING_R, RING_W = 25.0, 6.0
+ARC_SWEEP = 262.0
+COIN_R = 16.0
+FORK = dict(top=44.5, tine_end=52.0, bottom=65.5, spread=4.6, tine=2.3, handle=3.2)
 
 
-def layer(alpha: Image.Image, colour: tuple[int, int, int], size: int) -> Image.Image:
-    square = round(size * SQUARE_DP / LAYER_DP)
-    mark = Image.new("RGBA", alpha.size, colour + (0,))
-    mark.putalpha(alpha)
-    mark = mark.resize((square, square), Image.LANCZOS)
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    offset = (size - square) // 2
-    canvas.alpha_composite(mark, (offset, offset))
-    return canvas
+def arc_path(r: float, start_deg: float, sweep_deg: float) -> str:
+    """An arc on the centre, angles clockwise from 12 o'clock."""
+    a0 = math.radians(start_deg - 90)
+    a1 = math.radians(start_deg + sweep_deg - 90)
+    x0, y0 = C + r * math.cos(a0), C + r * math.sin(a0)
+    x1, y1 = C + r * math.cos(a1), C + r * math.sin(a1)
+    large = 1 if sweep_deg > 180 else 0
+    return f"M{x0:.3f},{y0:.3f} A{r:g},{r:g} 0 {large} 1 {x1:.3f},{y1:.3f}"
+
+
+def circle_path(r: float) -> str:
+    return f"M{C - r:g},{C:g} A{r:g},{r:g} 0 1 1 {C + r:g},{C:g} A{r:g},{r:g} 0 1 1 {C - r:g},{C:g} Z"
+
+
+def fork_paths() -> list[tuple[str, float]]:
+    """Three tines joined in a soft U, then the handle: (path, stroke width)."""
+    f = FORK
+    left, right = C - f["spread"], C + f["spread"]
+    join = f["tine_end"] + 3.6
+    u = f"M{left:g},{f['top']:g} V{f['tine_end']:g} Q{left:g},{join:g} {C:g},{join:g} Q{right:g},{join:g} {right:g},{f['tine_end']:g} V{f['top']:g}"
+    return [(u, f["tine"]), (f"M{C:g},{f['top']:g} V{join:g}", f["tine"]), (f"M{C:g},{join:g} V{f['bottom']:g}", f["handle"])]
+
+
+# Shapes as (kind, path, colour, stroke width): kind is "fill" or "stroke".
+FOREGROUND = [
+    ("stroke", circle_path(RING_R), TRACK, RING_W),
+    ("stroke", arc_path(RING_R, 0, ARC_SWEEP), ARC, RING_W),
+    ("fill", circle_path(COIN_R), PAPER, 0),
+] + [("stroke", p, INK, w) for p, w in fork_paths()]
+
+# One colour, so only what reads without colour: the arc and the fork.
+SILHOUETTE = [("stroke", arc_path(RING_R, 0, ARC_SWEEP), "#FFFFFF", RING_W)] + [
+    ("stroke", p, "#FFFFFF", w) for p, w in fork_paths()
+]
+
+
+def vector(shapes, size_dp: int = 108, viewport: float = 108, offset: float = 0, note: str = "") -> str:
+    body = ""
+    for kind, path, colour, width in shapes:
+        if kind == "fill":
+            body += f'        <path android:fillColor="{colour}" android:pathData="{path}" />\n'
+        else:
+            body += (
+                f'        <path android:strokeColor="{colour}" android:strokeWidth="{width:g}" '
+                f'android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="{path}" />\n'
+            )
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        f"<!-- {note} Generated by android/scripts/make_icons.py: edit the shapes there, not here. -->\n"
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        f'    android:width="{size_dp}dp"\n    android:height="{size_dp}dp"\n'
+        f'    android:viewportWidth="{viewport:g}"\n    android:viewportHeight="{viewport:g}">\n'
+        f'    <group android:translateX="{-offset:g}" android:translateY="{-offset:g}">\n'
+        f"{body}"
+        "    </group>\n</vector>\n"
+    )
+
+
+def svg(shapes, background: str | None, viewbox: str, size: int) -> str:
+    body = f'<rect x="0" y="0" width="108" height="108" fill="{background}"/>' if background else ""
+    for kind, path, colour, width in shapes:
+        if kind == "fill":
+            body += f'<path d="{path}" fill="{colour}"/>'
+        else:
+            body += f'<path d="{path}" fill="none" stroke="{colour}" stroke-width="{width:g}" stroke-linecap="round" stroke-linejoin="round"/>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="{viewbox}">{body}</svg>\n'
+
+
+def render(svg_text: str, size: int) -> Image.Image:
+    """Draws an SVG to a PNG of `size` pixels with headless Edge."""
+    edge = next(
+        (p for p in [Path(r"C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"),
+                     Path(r"C:/Program Files/Microsoft/Edge/Application/msedge.exe")] if p.exists()),
+        None,
+    )
+    if edge is None:
+        raise SystemExit("Microsoft Edge is needed to render the PNGs.")
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        page = Path(tmp) / "icon.html"
+        shot = Path(tmp) / "icon.png"
+        page.write_text(
+            f'<!doctype html><html><body style="margin:0;background:{INK}">{svg_text}</body></html>', encoding="utf-8"
+        )
+        # A profile of its own, so an Edge window already open cannot take the
+        # job over; and Edge may return before the file lands, so wait for it.
+        subprocess.run(
+            [str(edge), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
+             f"--user-data-dir={Path(tmp) / 'profile'}", f"--window-size={size},{size}", f"--screenshot={shot}",
+             page.as_uri()],
+            capture_output=True, timeout=120,
+        )
+        for _ in range(60):
+            if shot.exists() and shot.stat().st_size > 0:
+                break
+            time.sleep(0.5)
+        else:
+            raise SystemExit(f"Edge did not write {shot}")
+        time.sleep(0.5)
+        return Image.open(shot).convert("RGB").crop((0, 0, size, size))
 
 
 def main() -> None:
-    source = Image.open(SOURCE)
-    alpha = mark_alpha(source)
-    for density, scale in DENSITIES.items():
-        size = round(LAYER_DP * scale)
+    drawable = RES / "drawable"
+    (drawable / "ic_launcher_background.xml").write_text(
+        vector([("fill", "M0,0 H108 V108 H0 Z", INK, 0)], note="Ink, the app's own dark."), encoding="utf-8"
+    )
+    (drawable / "ic_launcher_foreground.xml").write_text(
+        vector(FOREGROUND, note="The coin, the fork and the green arc of what is left of the day."), encoding="utf-8"
+    )
+    (drawable / "ic_launcher_monochrome.xml").write_text(
+        vector(SILHOUETTE, note="Android 13 themed icons tint this one colour."), encoding="utf-8"
+    )
+    # The mark spans 26 to 82; a 64-unit window from 22 leaves the usual
+    # 2 dp margin round a 24 dp notification icon.
+    (drawable / "ic_notification.xml").write_text(
+        vector(SILHOUETTE, size_dp=24, viewport=64, offset=22, note="Status bar icon for the trial reminder."),
+        encoding="utf-8",
+    )
+    # The PNG launcher layers this replaces.
+    for density in ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"]:
         folder = RES / f"mipmap-{density}"
-        folder.mkdir(parents=True, exist_ok=True)
-        layer(alpha, GOLD, size).save(folder / "ic_launcher_foreground.png", optimize=True)
-        layer(alpha, (255, 255, 255), size).save(folder / "ic_launcher_monochrome.png", optimize=True)
+        if folder.exists():
+            shutil.rmtree(folder)
 
-    # Play Console wants a 512 px, 32-bit PNG and applies its own rounding.
+    full = svg(FOREGROUND, INK, "18 18 72 72", 1024)
     STORE.mkdir(parents=True, exist_ok=True)
-    # The mark alone, cropped to its bounds, for the feature graphic.
-    mark = Image.new("RGBA", alpha.size, GOLD + (0,))
-    mark.putalpha(alpha)
-    cropped = mark.crop(alpha.getbbox())
-    side = max(cropped.size)
-    square = Image.new("RGBA", (side, side), GOLD + (0,))
-    square.alpha_composite(cropped, ((side - cropped.width) // 2, (side - cropped.height) // 2))
-    square.resize((600, 600), Image.LANCZOS).save(STORE / "mark.png", optimize=True)
-    source.convert("RGB").resize((512, 512), Image.LANCZOS).save(STORE / "icon-512.png", optimize=True)
+    (STORE / "icon.svg").write_text(full, encoding="utf-8")
+    big = render(full, 1024)
+    big.save(IOS_ICON, optimize=True)
+    big.resize((512, 512), Image.LANCZOS).save(STORE / "icon-512.png", optimize=True)
+    big.resize((180, 180), Image.LANCZOS).save(DOCS / "apple-touch-icon.png", optimize=True)
+    big.resize((32, 32), Image.LANCZOS).save(DOCS / "favicon-32.png", optimize=True)
+    (DOCS / "favicon.svg").write_text(svg(FOREGROUND, INK, "18 18 72 72", 64), encoding="utf-8")
     print("icons written")
 
 

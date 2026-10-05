@@ -100,7 +100,7 @@ object TrialReminder {
         val title = EntitlementPolicy.reminderTitle(EntitlementPolicy.REMINDER_DAYS)
         val text = EntitlementPolicy.reminderNotice(Store.GooglePlay)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
