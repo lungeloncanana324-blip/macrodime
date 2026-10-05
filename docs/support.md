@@ -6,13 +6,16 @@ around what you can spend and what you will actually eat.
 
 ## Getting help
 
-Open an issue at
-<https://github.com/lungeloncanana324-blip/macrodime/issues>
+Email [macrodime.app@gmail.com](mailto:macrodime.app@gmail.com).
 
 Include your phone model, your iOS or Android version, and what you expected to happen
-against what did. Please do **not** include body measurements or photos in a
-public issue; if the problem needs them, say so in the issue and we will find
-another route.
+against what did. Email is private, so you can include more detail than you
+would in public, but there is no need to send body measurements or photos
+unless the problem is about them.
+
+You can also open a public issue at
+<https://github.com/lungeloncanana324-blip/macrodime/issues>. Please do **not**
+include body measurements or photos there.
 
 This is a small, independently built app, so replies may take a few days.
 

@@ -48,7 +48,7 @@ to you. Organisation accounts are exempt.
 | Short description | 80 | `Macro targets from real science, and a meal plan priced against your budget.` (76) |
 | Category | | Health & Fitness |
 | Tags | up to 5 | Meal planner, Nutrition, Calorie counter, Diet, Budgeting (choose from Play's list; the closest available) |
-| Email address | | Required and public. Use a support address you are happy to publish |
+| Email address | | `macrodime.app@gmail.com` (created 2026-10-05; also on the support page and in the privacy policy) |
 | Website | | `https://lungeloncanana324-blip.github.io/macrodime/` |
 | Privacy policy | | `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` |
 
@@ -113,7 +113,7 @@ Screenshot captions, in tab order, if you add text frames:
 | --- | --- | --- |
 | Privacy policy | The URL above | Required for every app, including one that collects nothing |
 | Ads | No, my app does not contain ads | |
-| App access | **All or some functionality is restricted**, with the instructions below | No account or login, but everything after setup is behind the paywall, and Google requires reviewers to be given a way past a subscription paywall |
+| App access (now called Sign-in details) | **All or some functionality is restricted**, with the instructions below | No account or login, but everything after setup is behind the paywall, and Google requires reviewers to be given a way past a subscription paywall |
 | Content rating | Complete the IARC questionnaire as below | |
 | Target audience | **18 and over only** | The app prescribes calorie deficits and refuses any age under 18. Choosing only 18+ also keeps it outside the Families policy |
 | News app | No | |
@@ -144,8 +144,10 @@ before adding one.
 ### Content rating questionnaire (IARC)
 
 Category: **All other app types**. Answer **No** to violence, sexuality, language,
-controlled substances, crude humour, gambling, user-to-user interaction, sharing
-location, and digital purchases. Expected result: Everyone / PEGI 3 / USK 0.
+controlled substances, crude humour, gambling, user-to-user interaction and
+sharing location. Answer **Yes** to digital purchases: since version code 2 the
+app sells MacroDime Pro. That adds the "In-app purchases" notice to the listing
+and does not change the age rating. Expected result: Everyone / PEGI 3 / USK 0.
 
 The rating describes content; the age limit is enforced separately, by the
 target audience answer above and by the app itself.
@@ -161,10 +163,12 @@ target audience answer above and by the app itself.
 Why "No" is true, not just claimed:
 
 - The app requests **no permission that reaches the network**. Without
-  `INTERNET` it cannot open a connection. Its only permission is
-  `com.android.vending.BILLING`, which lets it talk to the Play Store app on
-  the phone about MacroDime Pro, and `verifyReleasePermissions` fails the
-  build if any library ever merges in anything else. It caught one on
+  `INTERNET` it cannot open a connection. Its permissions are
+  `com.android.vending.BILLING` (to talk to the Play Store app on the phone
+  about MacroDime Pro), `POST_NOTIFICATIONS` (the local trial reminder) and
+  `RECEIVE_BOOT_COMPLETED` (to set that reminder again after a restart), and
+  `verifyReleasePermissions` fails the build if any library ever merges in
+  anything else. It caught one on
   2026-10-03: Play Billing 9 brings Google's Data Transport library, which
   uploads the billing library's own diagnostics and merges in `INTERNET` and
   `ACCESS_NETWORK_STATE`. The app manifest removes both (see the comment in

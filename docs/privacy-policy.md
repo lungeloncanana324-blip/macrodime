@@ -1,6 +1,6 @@
 # MacroDime privacy policy
 
-Last updated: 4 October 2026
+Last updated: 5 October 2026
 
 MacroDime is a nutrition and food budgeting app for iPhone and Android. This
 policy covers both, and describes what the app does with your information. It is
@@ -92,5 +92,5 @@ is published at this address.
 
 ## Contact
 
-Questions about this policy: open an issue at
+Questions about this policy: email [macrodime.app@gmail.com](mailto:macrodime.app@gmail.com), or open an issue at
 <https://github.com/lungeloncanana324-blip/macrodime/issues>
