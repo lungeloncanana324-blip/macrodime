@@ -88,11 +88,25 @@ does not tell an app which offer a purchase used). Verified against
 PreviewSubscriptionStore and the core rules only; the on-hold screen has not
 met a real account hold yet (see the phone checks in play-store-listing.md).
 
+**One icon everywhere, 2026-10-05.** The gold mark from the first iOS
+build no longer matched an app drawn in ink, paper and basil. The new icon is
+the Today screen's ink card in miniature: a white coin with a fork, ringed by
+the green arc of what is left of the day. `android/scripts/make_icons.py`
+draws it from one set of shapes into the Android launcher layers (vectors, so
+the per-density PNGs are gone), the Android 13 themed layer, the trial
+reminder's notification icon, the Play icon, the iOS AppIcon and the
+website's favicon and header. The feature graphic is now the app's first
+screen at banner width, and the store screenshots are the real screens
+(`ScreenshotTest`, with a demo week under the placeholder name Sam rather
+than a real person's) framed with captions by `make_store_screenshots.py`.
+
 **What iOS no longer matches** (port when iOS work resumes, each with its
 tests): the plan generator, the culinary families (and with them the README's
 salmon table, which still lists the cross-family swaps), the trial-only
 paywall and the reminder notification, the subscription-required line and the
-on-hold screen, the intro screens, and the theme. Until
+on-hold screen, the intro screens, and the theme. (The icon is already shared:
+the iOS AppIcon is drawn by the same script, so the iOS screens, still gold,
+are what will look out of place until the theme is ported.) Until
 then the Kotlin parity test checks only the three salmon swaps both engines
 still agree on.
 

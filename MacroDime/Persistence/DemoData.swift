@@ -65,7 +65,7 @@ enum DemoData {
             context.insert(profile)
         }
 
-        profile.displayName = "Lungelo"
+        profile.displayName = "Sam"
         profile.heightCm = 178
         profile.weightKg = 82
         profile.age = 31

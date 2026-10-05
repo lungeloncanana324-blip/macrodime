@@ -94,18 +94,19 @@ MacroDime estimates energy needs from population averages. Your real metabolic r
 
 | Asset | Requirement | Status |
 | --- | --- | --- |
-| App icon | 512 x 512 PNG | `android/play-store/icon-512.png`, generated from the iOS icon by `android/scripts/make_icons.py` |
-| Feature graphic | 1024 x 500 PNG or JPEG, required | `android/play-store/feature-graphic.png` |
-| Phone screenshots | 2 to 8, each side 320 to 3,840 px, no more than 2:1 | The `android.yml` workflow captures all four tabs from an emulator with demo data and uploads them as the `play-screenshots` artifact |
+| App icon | 512 x 512 PNG | `android/play-store/icon-512.png`, drawn by `android/scripts/make_icons.py` with the launcher icon, the themed icon, the notification icon, the iOS icon and the website's icons, all from one set of shapes |
+| Feature graphic | 1024 x 500 PNG or JPEG, required | `android/play-store/feature-graphic.png`, from `feature-graphic.html`: the app's first screen at banner width (ink, the food photograph, the icon, "Hit your macros on a real budget.") |
+| Phone screenshots | 2 to 8, each side 320 to 3,840 px, no more than 2:1 | `android/play-screenshots/store/`, 1080 x 1920: the real screens from `ScreenshotTest` with the demo week (a placeholder name, never a real person's), framed with a caption each by `android/scripts/make_store_screenshots.py` |
 
-Screenshot captions, in tab order, if you add text frames:
+The captions, in upload order:
 
-| Tab | Caption |
+| Screen | Caption |
 | --- | --- |
 | Today | `Your macros and your money, on one screen` |
-| Plan | `Every meal priced, with a cheaper version one tap away` |
-| Groceries | `A shopping list built from the week you planned` |
-| Settings | `Change what you eat, or what you spend, any time` |
+| Plan | `Every meal priced to your daily budget` |
+| Swap review | `Cheaper swaps that keep your macros` |
+| Groceries | `A shopping list built from your week` |
+| Today, dark | `Easy to read day or night` |
 
 ## App content: every declaration
 

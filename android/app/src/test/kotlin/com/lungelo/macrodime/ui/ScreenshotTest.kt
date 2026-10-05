@@ -47,6 +47,7 @@ import com.lungelo.macrodime.MacroDimeApplication
 import com.lungelo.macrodime.billing.PreviewSubscriptionStore
 import com.lungelo.macrodime.billing.StoreState
 import com.lungelo.macrodime.data.DemoData
+import com.lungelo.macrodime.data.MacroDimeRepository
 import com.lungelo.macrodime.domain.Entitlement
 import com.lungelo.macrodime.domain.PaywallReason
 import com.lungelo.macrodime.domain.ProPlan
@@ -61,6 +62,8 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 abstract class ScreenshotBase {
@@ -183,8 +186,14 @@ abstract class ScreenshotBase {
         waitForText("Add to Snacks")
         compose.onNodeWithText("Done").performClick()
         compose.waitForIdle()
-        // Tomorrow: nothing planned, so the day offers to plan itself.
-        compose.onNodeWithContentDescription("Next day").performClick()
+        // The demo plans the rest of this grocery week, so the first empty day,
+        // which offers to plan itself, is the first day of the next week.
+        val today = LocalDate.now()
+        val firstEmpty = MacroDimeRepository.weekStart(today).plusDays(7)
+        repeat(ChronoUnit.DAYS.between(today, firstEmpty).toInt()) {
+            compose.onNodeWithContentDescription("Next day").performClick()
+            compose.waitForIdle()
+        }
         waitForTag("plan-day")
         save("$prefix-tab-2-plan-empty-day")
 

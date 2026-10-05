@@ -2,56 +2,53 @@
 <!--
   Source of play-store/feature-graphic.png, the 1024 x 500 banner Play Console
   requires. Rendered by android/scripts/render_feature_graphic.ps1 with headless
-  Edge. Every word is HTML text, so it can be edited and re-rendered rather
-  than repainted. Play may crop the edges on some surfaces, so nothing that
-  matters sits within 40 px of one.
+  Edge. It is the app's own first screen at banner width: ink, the app's font
+  and food photograph, its green, its icon (icon.svg, from make_icons.py) and
+  its opening line. Every word is HTML text, so it can be edited and
+  re-rendered rather than repainted. Play may crop the edges on some surfaces,
+  so nothing that matters sits within 40 px of one.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>MacroDime feature graphic</title>
 <style>
+  @font-face { font-family: Jakarta; src: url(../app/src/main/res/font/jakarta_extrabold.ttf); font-weight: 800; }
+  @font-face { font-family: Jakarta; src: url(../app/src/main/res/font/jakarta_semibold.ttf); font-weight: 600; }
+  @font-face { font-family: Jakarta; src: url(../app/src/main/res/font/jakarta_regular.ttf); font-weight: 400; }
   :root {
-    --gold: #E3B45C;
-    --cream: #F3EBDD;
-    --muted: #B9AE9A;
+    --ink: #161614;
+    --paper: #F6F4EF;
+    --muted: #B4AFA5;
+    --basil: #6CC791;
   }
   html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; }
-  body {
-    background: linear-gradient(180deg, #19160F 0%, #0A0906 100%);
-    font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
-    color: var(--cream);
-    display: flex;
-    align-items: center;
-    position: relative;
+  body { background: var(--ink); font-family: Jakarta, sans-serif; color: var(--paper); position: relative; }
+  .photo {
+    position: absolute; right: 0; top: 0; width: 640px; height: 500px;
+    background: url(../app/src/main/res/drawable-nodpi/food_spread.webp) center 42% / cover no-repeat;
   }
-  .glow {
-    position: absolute; left: -120px; top: -60px; width: 620px; height: 620px;
-    background: radial-gradient(circle, rgba(227,180,92,0.16) 0%, rgba(227,180,92,0) 62%);
+  /* The photo fades into the ink under the words, as the first screen's does. */
+  .fade {
+    position: absolute; right: 0; top: 0; width: 640px; height: 500px;
+    background: linear-gradient(90deg, var(--ink) 0%, rgba(22,22,20,0.82) 22%, rgba(22,22,20,0) 58%);
   }
-  .mark { position: relative; width: 300px; height: 300px; margin-left: 72px; flex: none; }
-  .copy { position: relative; margin-left: 56px; margin-right: 64px; }
-  .eyebrow {
-    font-size: 20px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--gold); font-weight: 600; margin-bottom: 18px;
-  }
-  h1 { font-size: 56px; line-height: 1.04; margin: 0 0 22px; font-weight: 700; letter-spacing: -0.01em; }
-  h1 span { color: var(--gold); }
-  .points { display: flex; gap: 22px; font-size: 21px; color: var(--muted); font-weight: 500; }
-  .points b { color: var(--cream); font-weight: 600; }
+  .copy { position: absolute; left: 64px; top: 0; bottom: 0; width: 520px; display: flex; flex-direction: column; justify-content: center; }
+  .brand { display: flex; align-items: center; gap: 16px; margin-bottom: 30px; }
+  .brand img { width: 64px; height: 64px; border-radius: 15px; display: block; }
+  .brand span { font-weight: 600; font-size: 24px; letter-spacing: 0.01em; }
+  h1 { font-weight: 800; font-size: 58px; line-height: 1.02; letter-spacing: -0.025em; margin: 0 0 20px; }
+  h1 em { font-style: normal; color: var(--basil); }
+  p { font-weight: 400; font-size: 21px; line-height: 1.4; color: var(--muted); margin: 0; max-width: 440px; }
 </style>
 </head>
 <body>
-  <div class="glow"></div>
-  <img class="mark" src="mark.png" alt="">
+  <div class="photo"></div>
+  <div class="fade"></div>
   <div class="copy">
-    <div class="eyebrow">MacroDime</div>
-    <h1>Macros that fit<br><span>your budget</span></h1>
-    <div class="points">
-      <div><b>Priced</b> meal plans</div>
-      <div><b>Cheaper</b> swaps</div>
-      <div><b>Grocery</b> lists</div>
-    </div>
+    <div class="brand"><img src="icon.svg" alt=""><span>MacroDime</span></div>
+    <h1>Hit your macros on a <em>real budget.</em></h1>
+    <p>A week of meals planned to your calories and protein, and priced before you shop.</p>
   </div>
 </body>
 </html>

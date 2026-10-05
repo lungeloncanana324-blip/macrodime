@@ -2,8 +2,12 @@
  * DemoData.kt
  * MacroDime
  *
- * Fills the store with a plausible day so the store screenshots can show the
- * product rather than an empty wizard. Port of MacroDime/Persistence/DemoData.swift.
+ * Fills the store with a plausible week so the store screenshots can show the
+ * product rather than an empty wizard: today's three meals as written below,
+ * and the rest of the week planned the way onboarding plans a new user's, so
+ * the grocery list is a real week's shop. The name is a placeholder, never a
+ * real person's: these screens are published. Port of
+ * MacroDime/Persistence/DemoData.swift.
  *
  * Debug builds only, and that is a security decision, not a convenience. On
  * iOS the trigger is a launch argument no other app can pass. On Android the
@@ -29,13 +33,13 @@ object DemoData {
     const val EXTRA_DEMO = "macrodime.demo"
     const val EXTRA_TAB = "macrodime.tab"
 
-    /** Three meals, a week of grocery lines, and one progress entry. Idempotent. */
+    /** Today's three meals, the rest of the week planned, its grocery list, and one progress entry. Idempotent. */
     suspend fun install(repository: MacroDimeRepository, today: LocalDate = LocalDate.now()) {
         repository.seedCatalog()
 
         val now = System.currentTimeMillis()
         val profile = (repository.currentProfile() ?: blankProfile(now)).copy(
-            displayName = "Lungelo",
+            displayName = "Sam",
             heightCm = 178.0,
             weightKg = 82.0,
             age = 31,
@@ -78,6 +82,9 @@ object DemoData {
         }
 
         repository.logBaselineIfEmpty(profile, waistCm = 88.0)
+        // The rest of this grocery week, as onboarding would plan it. Days
+        // already planned (today, or a second run) are left alone.
+        repository.planEmptyDays(profile, MacroDimeRepository.weekStart(today), 7)
         repository.regenerateGroceries(today)
     }
 

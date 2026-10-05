@@ -98,8 +98,9 @@ To have CI produce signed bundles instead, add the four
 
 Everything Play Console asks, with the answers and the order to do it in, is in
 [`../docs/play-store-listing.md`](../docs/play-store-listing.md). The icon,
-feature graphic and their sources are in `play-store/`; the CI screenshots job
-captures the phone screenshots.
+feature graphic and their sources are in `play-store/`. The store screenshots
+are the app's real screens, rendered by `ScreenshotTest` with the demo week and
+framed with a caption each by `scripts/make_store_screenshots.py`.
 
 ## Deliberate differences from iOS
 
@@ -119,7 +120,9 @@ reason that varied run to run. Each fix is listed in
 ## Regenerating assets
 
 ```
-python3 android/scripts/make_icons.py                       # launcher + store icon, from the iOS icon
+python3 android/scripts/make_icons.py                       # the icon everywhere: launcher, themed, notification, Play, iOS, website
 powershell -File android/scripts/render_feature_graphic.ps1  # feature graphic, from its HTML
+./gradlew :app:testDebugUnitTest --tests '*ScreenshotTest*'  # the screens, with the demo week
+python3 android/scripts/make_store_screenshots.py           # store screenshots, framed and captioned
 python3 scripts/update_prices.py --sync-kotlin               # Kotlin prices, from the Swift table
 ```
