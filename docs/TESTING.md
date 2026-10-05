@@ -5,7 +5,7 @@ this laptop, and the columns say plainly what each one does and does not prove.
 
 | # | Layer | Runs on | Proves | Does not prove |
 | --- | --- | --- | --- | --- |
-| 1 | Engine tests | WSL on this machine | The science, the swap engine, currency conversion, the dietary filter, the plan audit, the catalogue sync, totals that add up (144 tests) | Anything that draws a view |
+| 1 | Engine tests | WSL on this machine | The science, the swap engine, currency conversion, the dietary filter, the plan audit, the catalogue sync, totals that add up, MacroDime Pro's copy and rules (158 tests) | Anything that draws a view |
 | 2 | Syntax gate | WSL on this machine | No unbalanced braces or bad interpolation in the SwiftUI half | That it type-checks |
 | 3 | Build and unit tests | GitHub Actions, `macos-15` | The app compiles, the test target runs in a simulator, the privacy manifest is present and valid | That it launches |
 | 4 | **Run it** | GitHub Actions, `macos-15` | The app launches, SwiftData opens its store, the catalogue seeds, four screens render | Gestures, scrolling feel, sound, haptics |
@@ -81,7 +81,7 @@ cd /mnt/c/Users/SIYA/projects/macrodime
 swift test --scratch-path /root/.mdbuild
 ```
 
-Expect `Executed 144 tests, with 0 failures`. This is the only layer that is
+Expect `Executed 158 tests, with 0 failures`. This is the only layer that is
 genuinely verified rather than merely compiled, and it is where the three bugs
 found on 2026-09-20 surfaced: the vegetable swap gap, the locale currency bug and
 these tests' own discovery that an unconstrained dietary profile silently removed

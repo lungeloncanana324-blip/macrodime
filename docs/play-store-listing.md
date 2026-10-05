@@ -119,6 +119,11 @@ The captions, in upload order:
 | Target audience | **18 and over only** | The app prescribes calorie deficits and refuses any age under 18. Choosing only 18+ also keeps it outside the Families policy |
 | News app | No | |
 | COVID-19 contact tracing and status | Not a contact tracing or status app | |
+| Data safety | As below | |
+| Government apps | No | |
+| Financial features | My app does not provide any financial features | A food budget is planning, not a financial service |
+| Health apps | Health and fitness: **Nutrition and Weight Management** only | It prescribes calorie and macro targets. It does not track activity, so Activity and Fitness is not ticked. It is not a medical device |
+| Advertising ID | No | No ads SDK, and the build fails if `AD_ID` or any other permission is merged in |
 
 ### App access instructions
 
@@ -136,11 +141,6 @@ The trial is free, so this gives reviewers full access without paying. If a
 review is still rejected for App access, the fallback is a reviewer code that
 unlocks Pro on one phone; that needs a new build, so wait for the rejection
 before adding one.
-| Data safety | As below | |
-| Government apps | No | |
-| Financial features | My app does not provide any financial features | A food budget is planning, not a financial service |
-| Health apps | Health and fitness: **Nutrition and Weight Management** only | It prescribes calorie and macro targets. It does not track activity, so Activity and Fitness is not ticked. It is not a medical device |
-| Advertising ID | No | No ads SDK, and the build fails if `AD_ID` or any other permission is merged in |
 
 ### Content rating questionnaire (IARC)
 

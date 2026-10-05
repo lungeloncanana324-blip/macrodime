@@ -1,8 +1,11 @@
 # MacroDime for Android
 
-The Google Play version of MacroDime. Same engines, same rules, same 57-food
-catalogue and the same prices as the iOS app, rebuilt natively in Kotlin and
-Jetpack Compose. Unlike iOS, all of it builds, tests and runs on Windows.
+The Google Play version of MacroDime: the iOS app's engines, rules, 57-food
+catalogue and prices, rebuilt natively in Kotlin and Jetpack Compose. Unlike
+iOS, all of it builds, tests and runs on Windows. Since 2026-10-04 it is also
+ahead of iOS (a planned week, culinary families for every swap, the trial-only
+paywall, a new look); what iOS has yet to match is listed in
+`docs/SHIPPING-GAPS.md` section 0.
 
 ## Layout
 
@@ -35,7 +38,7 @@ app/    Room database, view models, Compose UI, the Android manifest
 From `android/`:
 
 ```
-./gradlew :core:test                 # 145 engine tests, plain JVM, seconds
+./gradlew :core:test                 # 204 engine tests, plain JVM, seconds
 ./gradlew :app:testDebugUnitTest     # database and full-app UI tests (Robolectric)
 ./gradlew :app:lintRelease           # lint is an error, not a report
 ./gradlew :app:verifyReleasePermissions
@@ -46,8 +49,12 @@ From `android/`:
 On Windows use `gradlew.bat`, or `./gradlew` from Git Bash.
 
 `verifyReleasePermissions` fails the build if the release manifest requests any
-permission. MacroDime declares none, and the Play Data safety answer "No data
-collected" depends on that staying true.
+permission beyond four: `com.android.vending.BILLING` (Play Billing, to talk to
+the Play Store app), `POST_NOTIFICATIONS` and `RECEIVE_BOOT_COMPLETED` (the
+local trial reminder), and the signature-level permission androidx.core
+declares for the app's own receivers. None reaches the network, there is no
+`INTERNET`, and the Play Data safety answer "No data collected" depends on that
+staying true.
 
 ## Running it
 
@@ -109,6 +116,10 @@ framed with a caption each by `scripts/make_store_screenshots.py`.
 | Cloud backup is off; device-to-device transfer is on | Keeps "nothing leaves the phone" literally true for the Data safety form, without costing a user their history when they change phones |
 | Portion and grocery actions are in a visible menu | iOS uses long-press and swipes, which Android users do not look for |
 | Progress photos are re-encoded on import | Drops GPS and camera metadata and caps the size at 2,048 px |
+
+Not deliberate, and waiting for iOS work to resume: everything Android gained
+on 2026-10-04, listed under "What iOS no longer matches" in
+`docs/SHIPPING-GAPS.md` section 0.
 
 Five more differences existed until 2026-10-02, when the iOS app was fixed to
 match: a leftover currency rate multiplying dollar prices, the catalogue

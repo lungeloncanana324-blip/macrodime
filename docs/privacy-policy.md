@@ -33,14 +33,15 @@ Looking at a price never sends anything anywhere.
 
 ## Subscriptions
 
-MacroDime Pro, the subscription the app needs after its free trial, is sold
-through Google Play. Google takes the payment, under Google's own privacy
-policy; MacroDime never sees your card or any payment details. The app asks Google Play, through the Play Store
-app on your phone, only whether your subscription is active. It keeps that
+MacroDime Pro, the app's subscription, is sold through Google Play on Android
+and through the App Store on iPhone. The store takes the payment, under its own
+privacy policy; MacroDime never sees your card or any payment details. The app
+asks the store, through the Play Store app or Apple's StoreKit on your phone,
+only whether your subscription is active. It keeps that
 answer, the plan you chose and the date a free trial ends on your phone, so Pro
 keeps working for a few days without a connection and can remind you before a
 trial ends. None of it is sent to us, and Delete All My Data removes it too; an
-active subscription is found again from Google Play the next time the app asks.
+active subscription is found again from the store the next time the app asks.
 
 ## Notifications
 
@@ -52,8 +53,9 @@ allowed it, leaves your device.
 ## Third parties
 
 None. MacroDime includes no third-party analytics, advertising or crash-reporting
-software. Its only outside code for money is Google's own Play Billing library,
-which connects it to the Play Store app as described above. Apple and Google may collect crash and diagnostic information about
+software. Its only outside code for money is the stores' own: Google's Play Billing
+library on Android and Apple's StoreKit on iPhone, which connect it to the
+store as described above. Apple and Google may collect crash and diagnostic information about
 apps installed through their stores, under their own privacy policies and your
 phone's settings. That is collected by them, not by MacroDime, and it does not
 include anything you enter in the app.

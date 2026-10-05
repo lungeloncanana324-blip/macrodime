@@ -132,7 +132,7 @@ androidComponents {
         val applicationId = variant.applicationId
         val task = tasks.register("verify${variant.name.replaceFirstChar { it.uppercase() }}Permissions") {
             group = "verification"
-            description = "Fails if the merged ${variant.name} manifest requests any permission."
+            description = "Fails if the merged ${variant.name} manifest requests any permission not on the allowed list."
             inputs.file(manifest)
             inputs.property("applicationId", applicationId)
             doLast {
@@ -148,7 +148,7 @@ androidComponents {
                 val unexpected = requested - allowed
                 if (unexpected.isNotEmpty()) {
                     throw GradleException(
-                        "The release manifest requests ${unexpected.sorted()}. MacroDime declares no permissions; " +
+                        "The release manifest requests ${unexpected.sorted()}, beyond the permissions MacroDime allows; " +
                             "find the dependency that merged it, or update the Play Data safety answers first.",
                     )
                 }

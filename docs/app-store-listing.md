@@ -12,7 +12,7 @@ rather than writing. Character counts are respected where Apple enforces them.
 | Bundle id | `com.lungelo.macrodime` |
 | Primary category | Health and Fitness |
 | Secondary category | Food and Drink |
-| Price | Free (no in-app purchases at launch; see `docs/MONETISATION.md`) |
+| Price | Free, with one auto-renewable subscription, MacroDime Pro (below; why: `docs/MONETISATION.md`) |
 | Copyright | `2026 <legal name>` |
 
 ## Promotional text (170)
@@ -68,6 +68,17 @@ WHAT IT DOES NOT DO
 
 No account. No ads. No analytics. No network connection. Everything you enter
 stays on your device, and Delete All My Data removes all of it.
+
+MACRODIME PRO
+
+Your targets, the health and safety information and your measurements are
+free. MacroDime Pro adds the meal planner, the low-cost swap, the grocery list
+and progress photos, yearly with a 14-day free trial for new subscribers, or
+monthly. Payment is charged to your Apple Account, and the subscription renews
+automatically unless you cancel at least 24 hours before the end of the
+period, in Settings under your Apple Account.
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy policy: https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html
 
 MacroDime estimates energy needs from population averages. Your real metabolic
 rate can differ by 10% or more. It is not a medical device, it does not diagnose

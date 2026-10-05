@@ -198,7 +198,7 @@ it will not go live on its own.
 | File | Responsibility |
 | --- | --- |
 | `Commerce/SubscriptionStore.swift` | `Product.products(for:)` to fetch, `product.purchase()` to buy, `Transaction.updates` to hear about renewals and refunds while running, `Transaction.currentEntitlements` for the gate, `AppStore.sync()` behind Restore, `Product.SubscriptionInfo.status` if the paywall should show renewal state |
-| `Commerce/Entitlement.swift` | The persisted answer to "is this user Pro": an expiry date and a **grace window** of a few days, so a subscription that lapses while the phone is offline does not lock a paying user out mid-trip. This is the price of having no server |
+| `Commerce/Entitlement.swift` | The persisted answer to "is this user Pro": an expiry date and a **grace window** of a few days, so a subscription that lapses while the phone is offline does not lock a paying user out mid-trip. This is the price of having no server. **As built (2026-10-03), not needed:** StoreKit 2 keeps verified transactions on the device, so `currentEntitlements` answers offline; `Entitlement` and `EntitlementPolicy` live in `Domain/Subscription.swift` and carry only the plan and the trial reminder. The grace window exists on Android: seven days, `OFFLINE_GRACE_DAYS` in `android/core/.../domain/Subscription.kt` |
 | `Views/PaywallView.swift` | Title, duration, price, what it unlocks, Restore, and links to Terms of Use and the privacy policy |
 | `App/MacroDimeApp.swift` | Inject the entitlement into the environment beside the currency, and start the transaction listener |
 
@@ -210,7 +210,9 @@ button. Family Sharing stays off unless you decide otherwise.
 
 Apple rejects an app that is a stub without its purchase, and a nutrition app
 that hides its safety information behind a paywall deserves to be rejected. The
-line:
+line, which since 2026-10-04 holds on iOS only (on Android the trial is the way
+in, and without a subscription only the health and safety information,
+restoring a purchase and deleting all data stay open):
 
 | Free, forever | Subscription |
 | --- | --- |

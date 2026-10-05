@@ -5,10 +5,10 @@
 //  Fills the store with a plausible day so the app can be screenshotted on a
 //  simulator.
 //
-//  Why this exists: App Store screenshots cannot show an empty app, this app has
-//  never been run, and there is no Mac or device to drive by hand. A CI runner
-//  boots the simulator, launches with `-MacroDimeScreenshots`, and captures each
-//  tab. The alternative was screenshots of the wizard, which is what a new user
+//  Why this exists: App Store screenshots cannot show an empty app, and there
+//  is no Mac or device to drive the app by hand. A CI runner boots the
+//  simulator, launches with `-MacroDimeScreenshots`, and captures each tab.
+//  The alternative was screenshots of the wizard, which is what a new user
 //  sees first but not what the product does.
 //
 //  Nothing here runs in a normal launch: `installIfRequested` returns

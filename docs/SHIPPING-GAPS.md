@@ -22,14 +22,14 @@ build and sign it is in `android/README.md`; every Play Console answer is in
 | --- | --- | --- | --- | --- |
 | P1 | **12 testers for 14 days** | New personal accounts must run a closed test with at least 12 testers opted in for 14 consecutive days before production access. The critical path: recruit them first | Lungelo | 14 days minimum, then up to a week of review |
 | P2 | **Upload key** | Done 2026-10-03: `android/macrodime-upload.jks` with its password in `android/keystore.properties`, both git-ignored. Back both up outside the repository. The first signed bundle (versionCode 1) is built; the next upload needs `-PversionCode=2` | Lungelo, back-up only | 5 min |
-| P3 | **First run on a real phone** | Upload the signed bundle to the internal testing track and install it from the Play link (steps in `docs/play-store-listing.md`), or sideload `android/build/MacroDime-test.apk`. The app has launched on an emulator, never on hardware | Lungelo | 30 min |
+| P3 | **First run on a real phone** | Started: on 2026-10-04 Lungelo used the app on a phone with Google Play Billing and found Manage subscription opening an empty Play page (fixed in `9c77ca0`, version code 5). Still to do: the full phone checks in `docs/play-store-listing.md`, from the internal testing track | Lungelo | 30 min |
 | P4 | **Privacy policy URL live** | Done 2026-10-03: `https://lungeloncanana324-blip.github.io/macrodime/privacy-policy.html` returns the policy. Use it in Play Console's store listing and in App content, Privacy policy | done | 0 |
 | P5 | **App content declarations** | Data safety, health apps, target audience 18+, content rating, ads, financial features: answers written in `docs/play-store-listing.md`. App access is **restricted** since the paywall became the way in (Google requires reviewers to be given a way past a subscription paywall): paste the reviewer instructions from that file, under App access instructions | Lungelo | 45 min |
 | P6 | **Public contact email** | Done 2026-10-05: `macrodime.app@gmail.com`, on the Play listing (Store settings, Contact details), the support page and the privacy policy | done | 0 |
 | P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
-| P8 | **MacroDime Pro in Play Console** | Added 2026-10-03, built and tested in the app. Needs a payments profile, then a bundle with Play Billing uploaded (version code 2 or higher; version code 1 has none), then the subscription `pro` with base plans `annual` and `monthly` and the 14-day trial offer on `annual`, then license testers. Exact steps and ids: `docs/play-store-listing.md`, Pricing and MacroDime Pro. Until the subscription exists the paywall says plans could not be loaded | Lungelo | 45 min |
-| P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and resubscribe with the test card. Having had the trial, they see "Subscribe for $29.99 a year" the second time, and Google's sheet shows the first trial as 3 minutes; neither is a bug or a real charge. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
+| P8 | **MacroDime Pro in Play Console** | Added 2026-10-03, built and tested in the app. Needs a payments profile, then a bundle with Play Billing uploaded (version code 2 or higher; version code 1 has none), then the subscription `pro` with the base plan `annual` and the 14-day trial offer on it (no monthly base plan since 2026-10-04), then license testers. Exact steps and ids: `docs/play-store-listing.md`, Pricing and MacroDime Pro. Until the subscription exists the paywall says plans could not be loaded | Lungelo | 45 min |
 | P9 | **Data safety with Play Billing** | Google's definitions support keeping "No data collected" (the app reads only whether a subscription is active, on the phone, and sends nothing), but it is a judgement on Google's wording; the cautious alternative is in `docs/play-store-listing.md` | Lungelo | 10 min |
+| P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and resubscribe with the test card. Having had the trial, they see "Subscribe for $29.99 a year" the second time, and Google's sheet shows the first trial as 3 minutes; neither is a bug or a real charge. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
 
 ### 2026-10-04: the planned week, the trial-only paywall, the new look (Android)
 
@@ -114,22 +114,24 @@ still agree on.
 
 | Layer | Verified how |
 | --- | --- |
-| `android/core` (engines) | 145 JUnit tests on the JVM: the iOS suite case for case, plus the salmon dinner's seven swap candidates matched to the cent against the compiled Swift engine's printed output |
-| Room database and repository | 19 tests against real SQLite (Robolectric): seeding, swaps, grocery regeneration, deletion, damaged values |
-| The app, end to end | 8 Compose UI tests driving the real screens: onboarding, the acknowledgement gate, input validation, the food picker, a reviewed swap, the grocery list, Delete All My Data, editing the profile |
-| How it looks | Every screen rendered in light, dark, a 360 dp phone and large text (`ScreenshotTest.kt`), and reviewed by eye |
-| Store rules | Target API 36 (required since 31 August 2026); the release build fails if any permission is merged into the manifest; cloud backup excluded so "no data collected" holds |
+| `android/core` (engines) | 204 JUnit tests on the JVM: the iOS suite case for case, the plan generator, the culinary families and the subscription rules, plus the salmon dinner's swap candidates matched to the cent against the compiled Swift engine's printed output (the three hot mains both engines still offer) |
+| Room database and repository | 21 tests against real SQLite (Robolectric): seeding, swaps, grocery regeneration, deletion, damaged values |
+| The app, end to end | 23 Compose UI tests driving the real screens. 11 for the app: the intro, onboarding and the planned first week, the acknowledgement gate, input validation, the food picker, a reviewed swap, the grocery list, Delete All My Data, editing the profile. 12 for MacroDime Pro: the paywall as the way in, starting the trial, restore, on hold, lapsed, the trial reminder, deleting everything from the paywall |
+| How it looks | Every screen rendered in light, dark, a 360 dp phone and large text (`ScreenshotTest.kt`, 22 tests), and reviewed by eye |
+| Store rules | Target API 36 (required since 31 August 2026); the release build fails if any permission beyond billing, the trial reminder's two and androidx's own is merged into the manifest; cloud backup excluded so "no data collected" holds |
+
+All of it passes on `f2b6c8e`: `android.yml` run `37288482914` (2026-10-05).
 
 The app has launched on an emulator: `android.yml` run `36955987904` (2026-10-02)
 booted it with demo data and captured onboarding and every tab in light and
 dark, with no crash. That was the debug build.
 
-Not verified: a real device, and the R8-shrunk release build actually running.
-Since 2026-10-02 there
-is a test APK of that release build, signed with the debug key so a phone will
-install it (`docs/TESTING.md`, Android section); it builds at 2.0 MB, requests
-no permissions, and Room's `MacroDimeDatabase_Impl` survives shrinking under its
-own name, but it has still not been launched.
+Since 2026-10-04 the app has also run on a phone, with Google Play Billing
+(P3); the full phone checks have not been recorded yet. There is also a test
+APK of the R8-shrunk release build, signed with the debug key so a phone will
+install it (`docs/TESTING.md`, Android section); it built at 2.0 MB on
+2026-10-02, and Room's `MacroDimeDatabase_Impl` survives shrinking under its
+own name.
 
 ### Bugs the port found in the iOS app
 
@@ -204,7 +206,7 @@ families) is the pattern if it needs tightening.
 | 21 | **30 of 57 prices are still estimates** | Low, improved 2026-09-26 | 27 foods now carry official averages: 11 from BLS monthly data, 16 from USDA ERS fruit and vegetable prices carried forward with the CPI. `scripts/update_prices.py` writes them into `SourcedPrices.swift` at build time and `prices.yml` refreshes them on the 20th of each month, so the app still never goes online. The rest (fish, oils, nuts, most dairy, specialty breads) have no public average; a store API such as Kroger's would cover them, but only through a server, and it would change the App Privacy answers. A free `BLS_API_KEY` secret makes the monthly job independent of the shared no-key quota |
 | 17 | **No accessibility audit** | Low | Labels exist on rings, meters and cards. Largest Dynamic Type, and VoiceOver on the planner, have never been checked by a human |
 | 18 | **No undo for a swap** | Low | A swap applies immediately. The engine is conservative (10% macro tolerance) but a mistake has no one-tap reversal |
-| 19 | **No way to charge for it** | Built 2026-10-03; trial-only since 2026-10-04 (Android); untested against a store | Revised 2026-10-03: the launch build carries MacroDime Pro, yearly with a 14-day free trial and monthly with none, paywall after onboarding, Today and weight logging free. Android (Play Billing 9.1.0) passes 29 core and 10 UI tests with a preview store; the iOS twin (StoreKit 2) is compiled and tested only by `ios.yml`. Neither has spoken to a real store: Play needs P8 above, Apple needs the Paid Applications Agreement. Reasoning, prices and the sandbox test list: `docs/MONETISATION.md` |
+| 19 | **No way to charge for it** | Built 2026-10-03; trial-only since 2026-10-04 (Android); untested against a store | Revised 2026-10-03: the launch build carries MacroDime Pro, yearly with a 14-day free trial and monthly with none, paywall after onboarding, Today and weight logging free. Android (Play Billing 9.1.0) passes 36 core and 12 UI tests with a preview store; the iOS twin (StoreKit 2) is compiled and tested only by `ios.yml`. Neither has spoken to a real store: Play needs P8 above, Apple needs the Paid Applications Agreement. Reasoning, prices and the sandbox test list: `docs/MONETISATION.md` |
 | 20 | **Quantities read like arithmetic** | Fixed 2026-09-26 | The first screenshots showed `1.5 × 2 large eggs` and `1 × 1 can (142 g drained)`. `ServingMeasure` now reads each serving into a count, unit and noun (derived from the stored text, so no schema change) and multiplies that: `3 large eggs`, `1¼ cans (178 g drained)`, `1.2 kg raw`. Every catalogue serving must parse and render back unchanged, or `ServingMeasureTests` fails. Settings' `1783 kcal` is grouped now too. Open: a grocery line can still ask for `1¼ cans`, which nobody can buy; rounding countables up in the trolley is a product decision |
 | 22 | **Totals can miss a cent against the lines above them** | Medium, both platforms | Found 2026-10-02 in the first Android emulator screenshots, which are also the Play screenshots. The demo breakfast lists $0.22, $0.57 and $0.27 under a $1.05 header (the lines add to $1.06), and the grocery Produce section reads $0.91 over $0.65 and $0.27. Each line is rounded for display, while totals sum the unrounded costs. In a budgeting app a column that does not add up reads as a bug. **Fixed 2026-10-03, both platforms.** Rounding in the engine, the first idea, would not have cured it: the app converts at display time, so a rand column rounds again and can still miss a cent. The rule is now enforced where figures are shown, in the shown currency: `CurrencySettings.shown` rounds a line to the currency's smallest unit (one ISO minor-units table, read by both the rounding and the formatter), and every total over lines (meal headers, the day's spend and what is left, grocery sections and summary, swap savings and each step of a swap) is the sum of its lines as shown. The engines and their pinned figures are untouched. Tests on both platforms: the screenshot breakfast, rand, yen and dinar columns, every tenth of a cent checked against exact decimal rounding, 2,000 random columns in five currencies checked in whole smallest units, and a real swap whose steps add up to its title. Verified in CI: `ios.yml` run `37075140978` at `272dba3` built the app and passed 144 tests, SwiftPM and in-app, every new one by name |
 
@@ -212,8 +214,8 @@ families) is the pattern if it needs tightening.
 
 | Layer | Verified how | Confidence |
 | --- | --- | --- |
-| `Domain/`, `Engine/` | `swift test` on Linux and on `macos-15`, 144 tests (2026-10-03), figures worked by hand against the frozen `FoodCatalog.reference` prices | High |
-| `Persistence/`, `ViewModels/`, `Views/`, `App/` | `xcodebuild build` and `test` green on `macos-15` in CI (`5647a2c`), tests hosted in the app | Compiles and launches |
+| `Domain/`, `Engine/` | `swift test`, 158 tests on `macos-15` (`ios.yml` run `37288482880` at `f2b6c8e`, 2026-10-05) and earlier on Linux, figures worked by hand against the frozen `FoodCatalog.reference` prices | High |
+| `Persistence/`, `ViewModels/`, `Views/`, `App/`, `Commerce/` | `xcodebuild build` and `test` green on `macos-15` in CI (same run), tests hosted in the app | Compiles and launches |
 | App behaviour | `screenshots.yml`: launches with demo data, stays alive on all four tabs | Launch only; nothing tapped yet |
 
 The distinction matters. "It launches" means SwiftData opens its store and four
@@ -249,8 +251,9 @@ or that onboarding can be finished.
 
 ## 6. Open questions
 
-1. App Store or web first? The engines are plain Swift and would port. Without an
-   Apple device, iOS is the one platform where the UI cannot be seen.
+1. App Store or web first? **Resolved on 2026-10-02: neither, Google Play
+   first** (section 0). The engines were ported to Kotlin, and Android is the
+   platform whose UI can be seen and run without an Apple device.
 2. Which market first: US prices and US foods, or South African staples and rand
    pricing? The currency mechanism now supports either; the catalogue holds one.
 3. Pricing and monetisation: **resolved on 2026-09-20, revised 2026-10-03**: the
