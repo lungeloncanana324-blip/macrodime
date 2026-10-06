@@ -1,6 +1,6 @@
 # MacroDime privacy policy
 
-Last updated: 5 October 2026
+Last updated: 6 October 2026
 
 MacroDime is a nutrition and food budgeting app for iPhone and Android. This
 policy covers both, and describes what the app does with your information. It is
@@ -30,6 +30,11 @@ internet permission.
 
 Food prices are built into the app and change only when the app is updated.
 Looking at a price never sends anything anywhere.
+
+Links in the app (this policy, the sources behind the prices and nutrition
+figures, and eating disorder support) open in your web browser. MacroDime
+gives the browser the address and nothing else; the sites have their own
+privacy policies.
 
 ## Subscriptions
 

@@ -49,13 +49,32 @@ Every meal can be changed, and any day you clear can be planned again with
 The ingredient catalogue is 57 items. If you set a dietary restriction, those
 foods are removed before any suggestion is made.
 
-**Where do the prices come from?**
-Where the US government publishes an average retail price, MacroDime uses it:
-the Bureau of Labor Statistics monthly averages, and USDA fruit and vegetable
-prices adjusted to the same month. The rest are estimates, and Settings, under
-Prices, says how many of each there are and how recent the data is. Prices are
-US averages, so your own store will differ. They are built into the app and
-refreshed with app updates; MacroDime never goes online to look up a price.
+**Where do the prices and nutrition figures come from?**
+From public data. Each link opens the original:
+
+- Food prices: [Average Price Data](https://www.bls.gov/cpi/factsheets/average-prices.htm),
+  US Bureau of Labor Statistics (monthly US city averages).
+- Fruit, vegetable and bean prices:
+  [Fruit and Vegetable Prices](https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices),
+  USDA Economic Research Service, carried to the same month with the
+  [Consumer Price Index](https://www.bls.gov/cpi/), US Bureau of Labor Statistics.
+- Nutrition for whole foods: [FoodData Central](https://fdc.nal.usda.gov/), US
+  Department of Agriculture. Packaged foods use typical label values.
+- Adult BMI bands:
+  [Body mass index (BMI)](https://www.who.int/data/gho/data/themes/topics/topic-details/GHO/body-mass-index),
+  World Health Organization.
+
+The other prices are estimates, and Settings, under Prices, says how many of
+each there are and how recent the data is. Prices are US averages, so your own
+store will differ. They are built into the app and refreshed with app updates;
+MacroDime never goes online to look up a price. The app's Sources screen has
+the same links.
+
+**Is MacroDime a government app?**
+No. MacroDime is an independent app. It does not represent any government or
+government agency, and it is not affiliated with or endorsed by any
+organisation listed above. It uses figures these organisations publish for
+anyone to use.
 
 **Can I get a refund?**
 MacroDime is free to download and needs a MacroDime Pro subscription to use,
@@ -74,7 +93,7 @@ and the yearly price is charged when the trial ends unless you cancel before.
 The price and the terms are shown in full before you start.
 
 Without a subscription you can still read the health and safety information,
-restore a purchase and delete all your data.
+see the sources behind every price, restore a purchase and delete all your data.
 
 **My subscription says it is on hold.** Google Play could not take a payment,
 or the subscription is paused. Fix it in the Google Play app: tap your profile,

@@ -29,6 +29,7 @@ build and sign it is in `android/README.md`; every Play Console answer is in
 | P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
 | P8 | **MacroDime Pro in Play Console** | Added 2026-10-03, built and tested in the app. Needs a payments profile, then a bundle with Play Billing uploaded (version code 2 or higher; version code 1 has none), then the subscription `pro` with base plans `annual` and `monthly` and the 14-day trial offer on `annual`, then license testers. Exact steps and ids: `docs/play-store-listing.md`, Pricing and MacroDime Pro. Until the subscription exists the paywall says plans could not be loaded | Lungelo | 45 min |
 | P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and resubscribe with the test card. Having had the trial, they see "Subscribe for $29.99 a year" the second time, and Google's sheet shows the first trial as 3 minutes; neither is a bug or a real charge. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
+| P11 | **Misleading Claims rejection (6 Oct 2026)** | Play rejected the closed-test review: government prices with no link to the source, and no "not a government app" statement. Fixed in 1.3.1 (version code 8): a Sources screen with every source linked, reachable from Settings, Health & Safety and the paywall's menu, and a sources section with the .gov URLs and the statement in the store description. To do: paste the new description, upload version code 8, send for review. Steps: `docs/play-store-listing.md`, Government information | Lungelo | 15 min, then Google's review |
 | P9 | **Data safety with Play Billing** | Google's definitions support keeping "No data collected" (the app reads only whether a subscription is active, on the phone, and sends nothing), but it is a judgement on Google's wording; the cautious alternative is in `docs/play-store-listing.md` | Lungelo | 10 min |
 
 ### 2026-10-04: the planned week, the trial-only paywall, the new look (Android)
@@ -100,8 +101,20 @@ screen at banner width, and the store screenshots are the real screens
 (`ScreenshotTest`, with a demo week under the placeholder name Sam rather
 than a real person's) framed with captions by `make_store_screenshots.py`.
 
+**Misleading Claims rejection, 2026-10-06.** Google Play rejected the first
+review because the app shows US government figures (BLS and USDA prices) and
+named the agencies without linking them, and the description did not say the
+app is not a government's. Fixed on Android in 1.3.1: `engine/DataSources.kt`
+lists every source behind the app's figures (BLS Average Price Data and CPI,
+USDA ERS, USDA FoodData Central, WHO BMI) with links checked live on
+2026-10-06, and the Sources screen shows each with its address, under the
+statement that MacroDime does not represent any government. Settings, Health &
+Safety and the paywall's menu all open it. `DataSourcesTest` holds the store
+description to the same links and statement. The iOS app still names the
+agencies without links: port the Sources screen before any iOS submission.
+
 **What iOS no longer matches** (port when iOS work resumes, each with its
-tests): the plan generator, the culinary families (and with them the README's
+tests): the Sources screen and the not-a-government statement, the plan generator, the culinary families (and with them the README's
 salmon table, which still lists the cross-family swaps), the trial-only
 paywall and the reminder notification, the subscription-required line and the
 on-hold screen, the intro screens, and the theme. (The icon is already shared:
