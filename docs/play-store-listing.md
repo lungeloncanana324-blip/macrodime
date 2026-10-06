@@ -65,11 +65,29 @@ Your targets come from published science. Basal metabolic rate by Mifflin-St Jeo
 
 Your week is planned for you. When you finish setting up, MacroDime builds seven days of simple meals for your calories, protein, food budget and diet, with a shopping list to match. Change anything you like; any day you clear can be planned again with one tap.
 
-Your plan is built from a curated catalogue of 57 ingredients, and every meal shows its cost next to its macros. Where the US government publishes an average retail price (the Bureau of Labor Statistics, and USDA fruit and vegetable prices), that is the price you see. The rest are estimates, and Settings says how many of each there are. Prices are built into the app, so checking one never sends anything anywhere.
+Your plan is built from a curated catalogue of 57 ingredients, and every meal shows its cost next to its macros. Where a US government agency publishes an average retail price, that is the price you see. The rest are estimates, and Settings says how many of each there are.
+
+Sources, and a disclaimer
+
+MacroDime is an independent app. It does not represent any government or government agency, and it is not affiliated with or endorsed by any organisation listed here. It uses figures these organisations publish for anyone to use, and each link opens the original.
+
+Food prices: Average Price Data, US Bureau of Labor Statistics
+https://www.bls.gov/cpi/factsheets/average-prices.htm
+
+Fruit, vegetable and bean prices: USDA Economic Research Service
+https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices
+
+Price adjustment: Consumer Price Index, US Bureau of Labor Statistics
+https://www.bls.gov/cpi/
+
+Nutrition for whole foods: FoodData Central, US Department of Agriculture
+https://fdc.nal.usda.gov/
+
+The app shows the same links on its Sources screen, in Settings and in the menu of the subscription screen.
 
 The low-cost swap
 
-Pick any meal and MacroDime finds a cheaper version of it that keeps calories, protein, carbohydrate and fat within 10% of where they were. Swaps stay with food you would actually put on that plate: a hot main for a hot main, beans for beans, never tuna in your yogurt. A straight substitution cannot hold four macros at once, so the engine also re-portions the fat and carbs already in the meal to close the gap. Swap the salmon in a salmon dinner for chicken thighs and the meal costs far less, with every macro still within 10%.
+Pick any meal and MacroDime finds a cheaper version of it that keeps calories, protein, carbohydrate and fat within 10% of where they were. Swaps stay with food you would actually put on that plate: a hot main for a hot main, beans for beans, never tuna in your yogurt. A straight substitution cannot hold four macros at once, so the engine also re-portions the fat and carbs already in the meal to close the gap.
 
 Eat what you actually eat
 
@@ -137,10 +155,39 @@ review is still rejected for App access, the fallback is a reviewer code that
 unlocks Pro on one phone; that needs a new build, so wait for the rejection
 before adding one.
 | Data safety | As below | |
-| Government apps | No | |
+| Government apps | No | MacroDime has no government affiliation. Showing government figures is a separate matter, covered by the Misleading Claims policy: see Government information below |
 | Financial features | My app does not provide any financial features | A food budget is planning, not a financial service |
 | Health apps | Health and fitness: **Nutrition and Weight Management** only | It prescribes calorie and macro targets. It does not track activity, so Activity and Fitness is not ticked. It is not a medical device |
 | Advertising ID | No | No ads SDK, and the build fails if `AD_ID` or any other permission is merged in |
+
+### Government information (Misleading Claims policy)
+
+Play rejected the first review on **6 October 2026**: "Missing Source Link for
+Government Information". Any app that shows government information, affiliated
+or not, must link to the original source and say plainly that it does not
+represent a government. MacroDime shows BLS and USDA prices (and USDA nutrition
+values) but named the agencies without linking them, and the description had
+no disclaimer. Do not appeal: an appeal is for apps with written government
+authorisation. The fix is an update:
+
+1. **Description.** The full description above now has a "Sources, and a
+   disclaimer" section right after the prices paragraph: the statement that
+   MacroDime does not represent any government, then the four .gov sources
+   with their URLs. Paste the whole description into Store listing again.
+2. **The app.** Version 1.3.1 (version code 8) adds a Sources screen: the same
+   statement, then every source with its address and a link that opens the
+   original. It opens from Settings (under Prices), from Health & Safety, and
+   from the paywall's menu, so a reviewer reaches it without starting a trial.
+   The Settings price footer and the health statement also say MacroDime does
+   not represent any government.
+3. **Send the update for review** with the new bundle on the track that was
+   rejected. Publishing overview lists the changes; Policy status shows the
+   issue until the review passes.
+
+`DataSourcesTest` (android/core) fails the build if the description loses a
+.gov link or the statement, if the statement drifts from the app's, or if the
+description passes Play's 4,000 characters (counting each line break twice,
+in case the console sends CRLF).
 
 ### Content rating questionnaire (IARC)
 
@@ -213,6 +260,12 @@ Version 1.2.0 (version code 3), the first with the planned week:
 
 ```
 Your week is now planned for you the moment you finish setting up: simple meals for your calories, protein, budget and diet, with a shopping list to match. A new look built around the food, a 14-day free trial with a reminder before it ends, and cheaper swaps that stay with food you would actually put on the plate.
+```
+
+Version 1.3.1 (version code 8), the Misleading Claims fix:
+
+```
+New Sources screen: where every price and nutrition figure in MacroDime comes from, with a link to each original. MacroDime is an independent app and does not represent any government.
 ```
 
 ## Pricing and MacroDime Pro

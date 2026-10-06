@@ -53,6 +53,7 @@ import com.lungelo.macrodime.domain.PaywallReason
 import com.lungelo.macrodime.domain.ProPlan
 import com.lungelo.macrodime.domain.Store
 import com.lungelo.macrodime.ui.paywall.PaywallContent
+import com.lungelo.macrodime.ui.settings.SourcesScreen
 import com.lungelo.macrodime.ui.theme.MacroDimeTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -226,7 +227,7 @@ abstract class ScreenshotBase {
                     state = state, store = Store.GooglePlay, profile = profile, reason = reason,
                     savedSoFar = savedSoFar, preview = preview, selected = selected, remind = true,
                     onSelect = {}, onRemindChange = {}, onPurchase = {}, onRestore = {}, onRetry = {},
-                    onDismissMessage = {}, onOpenPrivacy = {}, onOpenHealth = {}, onDeleteAll = {}, onManage = {},
+                    onDismissMessage = {}, onOpenPrivacy = {}, onOpenHealth = {}, onOpenSources = {}, onDeleteAll = {}, onManage = {},
                 )
             }
         }
@@ -241,6 +242,15 @@ abstract class ScreenshotBase {
     }
 
     protected val ready = StoreState(StoreState.Availability.Ready, PreviewSubscriptionStore.DEFAULT_OFFERS)
+
+    /** The Sources screen: the statement, then each source with its address, top and scrolled to the end. */
+    protected fun sources(prefix: String) {
+        compose.setContent { MacroDimeTheme { SourcesScreen(onBack = {}) } }
+        waitForTag("sources")
+        save("$prefix-sources")
+        compose.onNodeWithTag("sources").performScrollToIndex(2)
+        save("$prefix-sources-scrolled")
+    }
 
     /** Someone whose trial lapsed: the paywall is the way back in, welcoming them back. */
     protected fun lapsed(prefix: String) {
@@ -332,6 +342,15 @@ class LightScreenshotTest : ScreenshotBase() {
     fun lapsed() = lapsed("light")
 
     @Test
+    fun sources() = sources("light")
+
+    @Test
+    fun sourcesLargeText() {
+        RuntimeEnvironment.setFontScale(1.6f)
+        sources("large-text")
+    }
+
+    @Test
     fun trialReminder() {
         val now = System.currentTimeMillis()
         launch(demo = true, pro = PreviewSubscriptionStore(Entitlement(isPro = true, plan = ProPlan.Annual, verifiedAtMillis = now, trialEndsAtMillis = now + 30 * 3_600_000L)))
@@ -369,4 +388,7 @@ class DarkScreenshotTest : ScreenshotBase() {
 
     @Test
     fun lapsed() = lapsed("dark")
+
+    @Test
+    fun sources() = sources("dark")
 }

@@ -69,6 +69,7 @@ import com.lungelo.macrodime.ui.paywall.PaywallScreen
 import com.lungelo.macrodime.ui.plan.DayPlanViewModel
 import com.lungelo.macrodime.ui.plan.PlanScreen
 import com.lungelo.macrodime.ui.settings.HealthAndSafetyScreen
+import com.lungelo.macrodime.ui.settings.SourcesScreen
 import com.lungelo.macrodime.ui.settings.SettingsScreen
 import com.lungelo.macrodime.ui.today.LogMeasurementSheet
 import com.lungelo.macrodime.ui.today.TodayScreen
@@ -149,14 +150,20 @@ private fun Gate(container: AppContainer, profile: UserProfileEntity, reason: Pa
     val preview by container.repository.meals(today).collectAsStateWithLifecycle(initialValue = null as List<MealItem>?)
     val savedSoFar by container.repository.totalSwapSavings.collectAsStateWithLifecycle(initialValue = 0.0)
     var isReadingHealth by rememberSaveable { mutableStateOf(false) }
+    var isReadingSources by rememberSaveable { mutableStateOf(false) }
 
     val meals = preview
     if (meals == null) {
         Blank()
         return
     }
+    // Sources first: Health & Safety opens it too, and Back returns there.
+    if (isReadingSources) {
+        SourcesScreen(onBack = { isReadingSources = false })
+        return
+    }
     if (isReadingHealth) {
-        HealthAndSafetyScreen(onBack = { isReadingHealth = false })
+        HealthAndSafetyScreen(onBack = { isReadingHealth = false }, onOpenSources = { isReadingSources = true })
         return
     }
     PaywallScreen(
@@ -166,6 +173,7 @@ private fun Gate(container: AppContainer, profile: UserProfileEntity, reason: Pa
         savedSoFarUsd = savedSoFar,
         preview = meals,
         onOpenHealth = { isReadingHealth = true },
+        onOpenSources = { isReadingSources = true },
         onDeleteAll = {
             scope.launch {
                 runCatching { container.repository.deleteAllUserData() }
@@ -181,6 +189,7 @@ private fun MainTabs(container: AppContainer, profile: UserProfileEntity, initia
     var tab by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(0, Tab.entries.lastIndex)) }
     var isEditingProfile by rememberSaveable { mutableStateOf(false) }
     var isReadingHealth by rememberSaveable { mutableStateOf(false) }
+    var isReadingSources by rememberSaveable { mutableStateOf(false) }
     var isLoggingMeasurement by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -206,8 +215,12 @@ private fun MainTabs(container: AppContainer, profile: UserProfileEntity, initia
         OnboardingScreen(editor, onClose = { isEditingProfile = false }, onSaved = { isEditingProfile = false })
         return
     }
+    if (isReadingSources) {
+        SourcesScreen(onBack = { isReadingSources = false })
+        return
+    }
     if (isReadingHealth) {
-        HealthAndSafetyScreen(onBack = { isReadingHealth = false })
+        HealthAndSafetyScreen(onBack = { isReadingHealth = false }, onOpenSources = { isReadingSources = true })
         return
     }
 
@@ -257,6 +270,7 @@ private fun MainTabs(container: AppContainer, profile: UserProfileEntity, initia
                     container.repository,
                     onEditProfile = { isEditingProfile = true },
                     onOpenHealth = { isReadingHealth = true },
+                    onOpenSources = { isReadingSources = true },
                     pro = pro,
                     store = subscriptions.store,
                     onManageSubscription = manageSubscription,

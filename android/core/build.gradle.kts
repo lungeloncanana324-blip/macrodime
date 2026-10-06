@@ -31,6 +31,11 @@ tasks.test {
     // so a South African or German machine runs the same assertions.
     systemProperty("user.language", "en")
     systemProperty("user.country", "US")
+    // DataSourcesTest holds the Play description to the app's source links, so
+    // an edit to the listing reruns it rather than leaving the result cached.
+    val listing = rootProject.file("../docs/play-store-listing.md")
+    inputs.file(listing)
+    systemProperty("macrodime.listing", listing.absolutePath)
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

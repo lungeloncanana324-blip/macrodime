@@ -5,7 +5,9 @@
  * The statement that calorie targets are estimates, not medical advice.
  * Acknowledged during onboarding and readable afterwards in Settings. The text
  * is the iOS text, word for word, with the platform's own name for the
- * settings screen.
+ * settings screen, except the price paragraph: since Play's Misleading Claims
+ * rejection of 6 Oct 2026 it says the app is not a government's and points to
+ * the Sources screen, which iOS does not have yet.
  */
 package com.lungelo.macrodime.ui.settings
 
@@ -28,9 +30,10 @@ object HealthDisclaimer {
         "MacroDime is for adults. It is not a medical device, and it does not diagnose, treat, or prevent any " +
         "condition." +
         "\n\n" +
-        "Ingredient prices are US averages: official government figures where they exist, estimates for the " +
-        "rest. They are not a quote from any store. If you set your own currency in Settings, amounts are " +
-        "converted at the rate you enter."
+        "Ingredient prices are US averages: figures published by US government agencies where they exist, " +
+        "estimates for the rest. They are not a quote from any store. MacroDime does not represent any " +
+        "government, and Sources links to each original. If you set your own currency in Settings, amounts " +
+        "are converted at the rate you enter."
 
     /** Shown beside the BMI figure, since BMI is the number most often misread. */
     const val BMI_CAVEAT = "BMI is a population statistic. It cannot tell muscle from fat, so a muscular person " +

@@ -3,7 +3,8 @@
  * MacroDime
  *
  * Profile review, currency, price sources, health and safety, and deleting
- * everything. Port of SettingsView in MacroDime/App/MacroDimeApp.swift.
+ * everything. Port of SettingsView in MacroDime/App/MacroDimeApp.swift, plus
+ * the Sources screen, which iOS does not have yet.
  */
 @file:OptIn(ExperimentalMaterial3Api::class)
 
@@ -26,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Edit
@@ -67,6 +69,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.lungelo.macrodime.BuildConfig
 import com.lungelo.macrodime.billing.StoreState
@@ -83,6 +86,8 @@ import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.Money
 import com.lungelo.macrodime.domain.PriceBook
 import com.lungelo.macrodime.domain.Store
+import com.lungelo.macrodime.engine.DataSource
+import com.lungelo.macrodime.engine.DataSources
 import com.lungelo.macrodime.engine.DietaryFilter
 import com.lungelo.macrodime.engine.FoodCatalog
 import com.lungelo.macrodime.engine.PriceTable
@@ -106,6 +111,7 @@ fun SettingsScreen(
     repository: MacroDimeRepository,
     onEditProfile: () -> Unit,
     onOpenHealth: () -> Unit,
+    onOpenSources: () -> Unit,
     pro: StoreState = StoreState(),
     store: Store = Store.GooglePlay,
     onManageSubscription: () -> Unit = {},
@@ -185,10 +191,12 @@ fun SettingsScreen(
                 // The prices are compiled in, so saying so is also the privacy
                 // statement: showing a price never goes online.
                 val summary = PriceTable.summary
-                Group("Prices", footer = summary.explanation) {
+                Group("Prices", footer = summary.explanation + " " + DataSources.INDEPENDENCE_SHORT) {
                     Labeled("Official averages", "${summary.sourcedCount} of ${summary.totalCount} foods")
                     Labeled("Estimates", "${summary.estimatedCount} foods")
                     Labeled("Latest data", summary.period)
+                    HorizontalDivider()
+                    ActionRow("Sources", Icons.AutoMirrored.Rounded.LibraryBooks, onClick = onOpenSources, chevron = true, tag = "open-sources")
                 }
             }
             item {
@@ -327,7 +335,7 @@ private fun CurrencyGroup(profile: UserProfileEntity, save: (UserProfileEntity) 
 
 /** Readable at any time, so the disclaimer is not a one-time dialog the user tapped past. */
 @Composable
-fun HealthAndSafetyScreen(onBack: () -> Unit) {
+fun HealthAndSafetyScreen(onBack: () -> Unit, onOpenSources: () -> Unit) {
     val context = LocalContext.current
     BackHandler(onBack = onBack)
     Scaffold(
@@ -343,6 +351,7 @@ fun HealthAndSafetyScreen(onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         LazyColumn(
+            modifier = Modifier.testTag("health"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -350,11 +359,100 @@ fun HealthAndSafetyScreen(onBack: () -> Unit) {
             item { Group("Health & safety") { Text(HealthDisclaimer.BODY, style = MaterialTheme.typography.bodyMedium) } }
             item { Group("On BMI") { Text(HealthDisclaimer.BMI_CAVEAT, style = MaterialTheme.typography.bodyMedium) } }
             item {
+                Group(null, footer = "Where every price and nutrition figure comes from, with a link to each original.") {
+                    ActionRow("Sources", Icons.AutoMirrored.Rounded.LibraryBooks, onClick = onOpenSources, chevron = true, tag = "health-sources")
+                }
+            }
+            item {
                 Group(null, footer = "If tracking food is making your relationship with eating worse, stop and talk to someone.") {
                     ActionRow(HealthDisclaimer.SUPPORT_NAME, Icons.Rounded.Support, onClick = { openLink(context, HealthDisclaimer.SUPPORT_URL) }, external = true)
                 }
             }
         }
+    }
+}
+
+/**
+ * Every published source behind the app's figures, each linked to the
+ * original, under the statement that MacroDime is not a government's app.
+ * Google Play requires both of any app that shows government information.
+ * Settings, Health & Safety and the paywall's menu all open it, so nobody has
+ * to subscribe to see where a number came from.
+ */
+@Composable
+fun SourcesScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    BackHandler(onBack = onBack)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Sources", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back") }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.testTag("sources"),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 8.dp, bottom = padding.calculateBottomPadding() + 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            item { Group("Not a government app") { Text(DataSources.INDEPENDENCE, style = MaterialTheme.typography.bodyMedium) } }
+            item {
+                Group("Food prices", footer = PriceTable.summary.explanation) {
+                    SourceRows(DataSources.prices) { openLink(context, it.url) }
+                }
+            }
+            item {
+                Group("Nutrition and BMI") {
+                    SourceRows(DataSources.nutrition) { openLink(context, it.url) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceRows(sources: List<DataSource>, onOpen: (DataSource) -> Unit) {
+    sources.forEachIndexed { index, source ->
+        if (index > 0) HorizontalDivider()
+        SourceRow(source, onClick = { onOpen(source) })
+    }
+}
+
+/** A source as a link: what it is, who publishes it, what the app takes from it, and the address itself. */
+@Composable
+private fun SourceRow(source: DataSource, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = 6.dp)
+            .testTag("source-${source.title}"),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(source.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(source.publisher, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(DataSources.useOf(source), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                source.shownUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Icon(
+            Icons.AutoMirrored.Rounded.OpenInNew,
+            contentDescription = "Opens in your browser",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp).size(18.dp),
+        )
     }
 }
 

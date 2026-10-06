@@ -12,15 +12,19 @@ package com.lungelo.macrodime.ui
 
 import android.Manifest
 import android.app.Application
+import android.content.Intent
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -37,6 +41,7 @@ import com.lungelo.macrodime.domain.DisplayFormat
 import com.lungelo.macrodime.domain.Entitlement
 import com.lungelo.macrodime.domain.Paywall
 import com.lungelo.macrodime.domain.ProPlan
+import com.lungelo.macrodime.engine.DataSources
 import com.lungelo.macrodime.ui.theme.MacroDimeTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -250,6 +255,58 @@ class ProFlowTest {
         waitForTag("intro-hook")
         eventually { store.forgotten == 1 }
         assertEquals(null, runBlocking { container.repository.currentProfile() })
+    }
+
+    /**
+     * Where the paywall's prices come from is reachable without paying, and
+     * each source opens its original. Google Play rejected the first review
+     * (6 Oct 2026) for government prices shown with no link to the source.
+     */
+    @Test
+    fun theSourcesAreReachableFromThePaywall() {
+        launch(PreviewSubscriptionStore())
+        onboard()
+        waitForText("Your week is ready")
+        compose.onNodeWithTag("paywall-more").performClick()
+        compose.onNodeWithTag("paywall-sources").performClick()
+        waitForTag("sources")
+        assertTrue(has(DataSources.INDEPENDENCE), "the statement that the app is not a government's")
+        assertTrue(has(DataSources.AVERAGE_PRICES.shownUrl), "the address itself, so the .gov shows before a tap")
+
+        compose.onNodeWithTag("sources").performScrollToNode(hasTestTag("source-${DataSources.AVERAGE_PRICES.title}"))
+        compose.onNodeWithTag("source-${DataSources.AVERAGE_PRICES.title}").performClick()
+        val opened = Shadows.shadowOf(ApplicationProvider.getApplicationContext<Application>()).nextStartedActivity
+        assertEquals(Intent.ACTION_VIEW, opened?.action)
+        assertEquals(DataSources.AVERAGE_PRICES.url, opened?.dataString)
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        waitForText("Your week is ready")
+    }
+
+    /** Inside the app, Settings opens Sources beside the price counts, and so does Health & Safety. */
+    @Test
+    fun theSourcesAreReachableFromSettingsAndHealth() {
+        launch(PreviewSubscriptionStore.subscriber())
+        onboard()
+        waitForText("Today's meals")
+        compose.onNodeWithTag("tab-Settings").performClick()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("open-sources"))
+        assertTrue(has("does not represent any government"), "the price footer says it too")
+        compose.onNodeWithTag("open-sources").performClick()
+        waitForTag("sources")
+        compose.onNodeWithContentDescription("Back").performClick()
+        waitForText("Your plan")
+
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Health & Safety"))
+        compose.onNodeWithText("Health & Safety").performClick()
+        waitForTag("health")
+        compose.onNodeWithTag("health").performScrollToNode(hasTestTag("health-sources"))
+        compose.onNodeWithTag("health-sources").performClick()
+        waitForTag("sources")
+        // Back from Sources returns to the statement it was opened from, not to Settings.
+        compose.onNodeWithContentDescription("Back").performClick()
+        waitForTag("health")
+        assertTrue(!hasTag("sources") && !has("Your plan"))
     }
 
     /** Someone whose trial lapsed opens the app on the paywall, welcomed back, with their savings first if any. */

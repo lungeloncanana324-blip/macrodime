@@ -31,6 +31,13 @@ sealed interface PriceSource {
             is Bls -> "BLS"
             is Ers -> "USDA ERS"
         }
+
+    /** The published dataset, with the link the Sources screen opens. */
+    val dataset: DataSource
+        get() = when (this) {
+            is Bls -> DataSources.AVERAGE_PRICES
+            is Ers -> DataSources.FRUIT_AND_VEGETABLE_PRICES
+        }
 }
 
 /** The unit a published price is quoted in. */
@@ -104,6 +111,13 @@ object PriceTable {
         val cost = byFoodId[food.id]?.costPerServing(food) ?: return food
         return food.withCost(cost)
     }
+
+    /** The catalogue foods whose price comes from [dataset], counted the way [summary] counts them. */
+    fun foodsPricedFrom(dataset: DataSource): List<FoodSnapshot> =
+        FoodCatalog.reference.filter { food ->
+            val entry = entryFor(food.id)
+            entry != null && entry.source.dataset == dataset && entry.costPerServing(food) != null
+        }
 
     /** What Settings says about where prices come from. */
     val summary: PriceSummary

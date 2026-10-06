@@ -146,6 +146,8 @@ private fun UserProfileEntity.numbers(): PersonalNumbers {
  *
  * @param preview today's planned meals, quoted on the paywall.
  * @param onOpenHealth the full health and safety statement.
+ * @param onOpenSources where the prices on the paywall come from, linked, as Play
+ *   requires of government figures; reachable without paying.
  * @param onDeleteAll Delete All My Data, reachable without paying.
  */
 @Composable
@@ -156,6 +158,7 @@ fun PaywallScreen(
     savedSoFarUsd: Double,
     preview: List<MealItem>,
     onOpenHealth: () -> Unit,
+    onOpenSources: () -> Unit,
     onDeleteAll: () -> Unit,
 ) {
     val state by subscriptions.state.collectAsStateWithLifecycle()
@@ -198,6 +201,7 @@ fun PaywallScreen(
         onDismissMessage = subscriptions::clearMessage,
         onOpenPrivacy = { openExternal(context, HealthDisclaimer.PRIVACY_POLICY_URL) },
         onOpenHealth = onOpenHealth,
+        onOpenSources = onOpenSources,
         onDeleteAll = onDeleteAll,
         onManage = { openExternal(context, subscriptions.manageSubscriptionUrl) },
     )
@@ -222,6 +226,7 @@ fun PaywallContent(
     onDismissMessage: () -> Unit,
     onOpenPrivacy: () -> Unit,
     onOpenHealth: () -> Unit,
+    onOpenSources: () -> Unit,
     onDeleteAll: () -> Unit,
     onManage: () -> Unit,
 ) {
@@ -252,6 +257,7 @@ fun PaywallContent(
                     onRestore = onRestore,
                     onOpenPrivacy = onOpenPrivacy,
                     onOpenHealth = onOpenHealth,
+                    onOpenSources = onOpenSources,
                     onDeleteAll = { isConfirmingDelete = true },
                 )
             }
@@ -327,6 +333,7 @@ private fun Header(
     onRestore: () -> Unit,
     onOpenPrivacy: () -> Unit,
     onOpenHealth: () -> Unit,
+    onOpenSources: () -> Unit,
     onDeleteAll: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -365,6 +372,11 @@ private fun Header(
                         DropdownMenuItem(text = { Text("Restore purchases") }, onClick = { menuOpen = false; onRestore() })
                     }
                     DropdownMenuItem(text = { Text("Health and safety") }, onClick = { menuOpen = false; onOpenHealth() })
+                    DropdownMenuItem(
+                        text = { Text("Sources") },
+                        onClick = { menuOpen = false; onOpenSources() },
+                        modifier = Modifier.testTag("paywall-sources"),
+                    )
                     DropdownMenuItem(text = { Text("Privacy policy") }, onClick = { menuOpen = false; onOpenPrivacy() })
                     DropdownMenuItem(
                         text = { Text("Delete all my data", color = Brand.colors.overBudget) },
