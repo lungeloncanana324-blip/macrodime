@@ -52,12 +52,13 @@ foods are removed before any suggestion is made.
 **Where do the prices and nutrition figures come from?**
 From public data. Each link opens the original:
 
-- Food prices: [Average Price Data](https://www.bls.gov/cpi/factsheets/average-prices.htm),
+- Food prices: [Average Price Data](https://data.bls.gov/toppicks?survey=ap),
   US Bureau of Labor Statistics (monthly US city averages).
 - Fruit, vegetable and bean prices:
   [Fruit and Vegetable Prices](https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices),
   USDA Economic Research Service, carried to the same month with the
-  [Consumer Price Index](https://www.bls.gov/cpi/), US Bureau of Labor Statistics.
+  [Consumer Price Index for fruits and vegetables](https://data.bls.gov/timeseries/CUUR0000SAF113),
+  US Bureau of Labor Statistics.
 - Nutrition for whole foods: [FoodData Central](https://fdc.nal.usda.gov/), US
   Department of Agriculture. Packaged foods use typical label values.
 - Adult BMI bands:

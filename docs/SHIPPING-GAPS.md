@@ -29,7 +29,7 @@ build and sign it is in `android/README.md`; every Play Console answer is in
 | P7 | **Phone screenshots** | The `android.yml` screenshots job captures every tab from an emulator once the branch is pushed | CI | 0 |
 | P8 | **MacroDime Pro in Play Console** | Added 2026-10-03, built and tested in the app. Needs a payments profile, then a bundle with Play Billing uploaded (version code 2 or higher; version code 1 has none), then the subscription `pro` with base plans `annual` and `monthly` and the 14-day trial offer on `annual`, then license testers. Exact steps and ids: `docs/play-store-listing.md`, Pricing and MacroDime Pro. Until the subscription exists the paywall says plans could not be loaded | Lungelo | 45 min |
 | P10 | **Every closed tester a license tester** | Added 2026-10-04 with the trial-only paywall: there is no free tier, so a tester who is not a license tester must start a real trial and remember to cancel. License testers pay nothing, but Google's test subscriptions end after about 3.5 hours (3-minute trial, 30-minute yearly renewals, at most 6), so testers meet the paywall again and resubscribe with the test card. Having had the trial, they see "Subscribe for $29.99 a year" the second time, and Google's sheet shows the first trial as 3 minutes; neither is a bug or a real charge. Brief them before the 14 days start. Steps: `docs/play-store-listing.md`, License testers | Lungelo | 15 min |
-| P11 | **Misleading Claims rejection (6 Oct 2026)** | Play rejected the closed-test review: government prices with no link to the source, and no "not a government app" statement. Fixed in 1.3.1 (version code 8): a Sources screen with every source linked, reachable from Settings, Health & Safety and the paywall's menu, and a sources section with the .gov URLs and the statement in the store description. To do: paste the new description, upload version code 8, send for review. Steps: `docs/play-store-listing.md`, Government information | Lungelo | 15 min, then Google's review |
+| P11 | **Misleading Claims rejections (6 and 7 Oct 2026)** | First review: government prices with no link to the source, and no "not a government app" statement; fixed in 1.3.1 (version code 8) with a Sources screen and a sources section in the description. Second review: "Broken or Inaccessible Source Link", because the two www.bls.gov links answer automated visitors with a 403; fixed in 1.3.2 (version code 9) by moving them to data.bls.gov, which `scripts/check_source_links.py` confirms opens for a bot. To do: paste the description again (two addresses changed), upload version code 9, send for review. Steps: `docs/play-store-listing.md`, Government information | Lungelo | 15 min, then Google's review |
 | P9 | **Data safety with Play Billing** | Google's definitions support keeping "No data collected" (the app reads only whether a subscription is active, on the phone, and sends nothing), but it is a judgement on Google's wording; the cautious alternative is in `docs/play-store-listing.md` | Lungelo | 10 min |
 
 ### 2026-10-04: the planned week, the trial-only paywall, the new look (Android)
@@ -112,6 +112,16 @@ statement that MacroDime does not represent any government. Settings, Health &
 Safety and the paywall's menu all open it. `DataSourcesTest` holds the store
 description to the same links and statement. The iOS app still names the
 agencies without links: port the Sources screen before any iOS submission.
+
+**Second Misleading Claims rejection, 2026-10-07: broken source link.** The
+links checked "live" on 2026-10-06 were checked in a browser-like client; the
+two on www.bls.gov return a 403 "Access Denied" page to curl, Python and
+headless Edge (Akamai), and Google's check is automated. Fixed in 1.3.2 by
+linking data.bls.gov instead: the Average Price Data series list and the CPI
+fruits and vegetables series the app actually uses. `DataSourcesTest` bans the
+blocked BLS hosts, and `scripts/check_source_links.py` (run by links.yml on
+every change and weekly) fetches every link as a bot. Lesson: "the link opens"
+means "it opens for a machine", so check links with a plain HTTP client.
 
 **What iOS no longer matches** (port when iOS work resumes, each with its
 tests): the Sources screen and the not-a-government statement, the plan generator, the culinary families (and with them the README's
