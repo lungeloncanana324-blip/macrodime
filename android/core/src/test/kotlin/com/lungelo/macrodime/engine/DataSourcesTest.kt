@@ -7,6 +7,11 @@
  * hold both fixes in place: every government figure the app uses links to a
  * .gov original, and the store description carries the same links and the
  * same statement as the Sources screen.
+ *
+ * The second review, on 7 Oct 2026, failed on a "broken or inaccessible source
+ * link": www.bls.gov turns automated visitors away with a 403, and Play's check
+ * is automated. The blocked hosts are kept out here; whether the rest answer is
+ * a network question, so scripts/check_source_links.py asks it, not this test.
  */
 package com.lungelo.macrodime.engine
 
@@ -29,6 +34,17 @@ class DataSourcesTest {
         }
     }
 
+    /**
+     * www.bls.gov and download.bls.gov answer curl and headless browsers with
+     * "Access Denied"; data.bls.gov serves the same data to anyone.
+     */
+    @Test
+    fun noLinkIsOnABlsHostThatTurnsAutomatedVisitorsAway() {
+        val blocked = setOf("www.bls.gov", "bls.gov", "download.bls.gov")
+        for (source in DataSources.all) assertTrue(URI(source.url).host !in blocked, "${source.title} links ${source.url}")
+        for (host in blocked) assertTrue("https://$host/" !in description, "the store description links $host")
+    }
+
     @Test
     fun eachSourceIsListedOnce() {
         assertEquals(DataSources.all.size, DataSources.all.map { it.url }.toSet().size)
@@ -37,7 +53,7 @@ class DataSourcesTest {
     /** What is printed is the address itself, so a reader sees the .gov before tapping. */
     @Test
     fun theShownLinkIsTheAddressWithoutItsScheme() {
-        assertEquals("www.bls.gov/cpi", DataSources.CONSUMER_PRICE_INDEX.shownUrl)
+        assertEquals("data.bls.gov/timeseries/CUUR0000SAF113", DataSources.CONSUMER_PRICE_INDEX.shownUrl)
         for (source in DataSources.all) assertTrue(source.url.endsWith(source.shownUrl) || source.url.endsWith(source.shownUrl + "/"))
     }
 

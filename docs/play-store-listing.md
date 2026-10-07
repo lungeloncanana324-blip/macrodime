@@ -72,13 +72,13 @@ Sources, and a disclaimer
 MacroDime is an independent app. It does not represent any government or government agency, and it is not affiliated with or endorsed by any organisation listed here. It uses figures these organisations publish for anyone to use, and each link opens the original.
 
 Food prices: Average Price Data, US Bureau of Labor Statistics
-https://www.bls.gov/cpi/factsheets/average-prices.htm
+https://data.bls.gov/toppicks?survey=ap
 
 Fruit, vegetable and bean prices: USDA Economic Research Service
 https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices
 
 Price adjustment: Consumer Price Index, US Bureau of Labor Statistics
-https://www.bls.gov/cpi/
+https://data.bls.gov/timeseries/CUUR0000SAF113
 
 Nutrition for whole foods: FoodData Central, US Department of Agriculture
 https://fdc.nal.usda.gov/
@@ -189,6 +189,33 @@ authorisation. The fix is an update:
 description passes Play's 4,000 characters (counting each line break twice,
 in case the console sends CRLF).
 
+**Second rejection, 7 October 2026: "Broken or Inaccessible Source Link"**, in
+the full description. The links were there this time, and every one opened in
+a desktop browser, but the two BLS links were on www.bls.gov, which sits behind
+an Akamai bot filter: curl, Python and headless Edge all get a 403 "Access
+Denied" page. Play checks source links with a machine, so it saw the block
+page. The two USDA links answer anyone and were not the problem. Fixed in 1.3.2
+(version code 9) by moving both BLS links to data.bls.gov, the same agency's
+data site, which serves every client:
+
+- Food prices: `https://data.bls.gov/toppicks?survey=ap`, the Average Price
+  Data series list (bread, eggs, milk and the rest, by series id).
+- Price adjustment: `https://data.bls.gov/timeseries/CUUR0000SAF113`, the one
+  CPI series the app uses (fruits and vegetables, US city average), rather than
+  the CPI home page.
+
+To do: paste the full description above into Store listing again (only the two
+BLS addresses changed), upload version code 9 to the rejected track, and send
+for review. The app's Sources screen had the same two links, which is why it
+needs the new bundle as well as the new description.
+
+Two guards now: `DataSourcesTest` fails if a link goes back to www.bls.gov or
+download.bls.gov, and `scripts/check_source_links.py` fetches every link in
+`DataSources.kt` and in the description as a bot would (links.yml runs it from
+GitHub's servers on every change and weekly). Run it before pasting any
+description that adds a link. It passes the new links and fails the rejected
+description on exactly the two BLS links.
+
 ### Content rating questionnaire (IARC)
 
 Category: **All other app types**. Answer **No** to violence, sexuality, language,
@@ -266,6 +293,12 @@ Version 1.3.1 (version code 8), the Misleading Claims fix:
 
 ```
 New Sources screen: where every price and nutrition figure in MacroDime comes from, with a link to each original. MacroDime is an independent app and does not represent any government.
+```
+
+Version 1.3.2 (version code 9), the source link fix:
+
+```
+The Bureau of Labor Statistics links on the Sources screen now open the price data itself, on data.bls.gov.
 ```
 
 ## Pricing and MacroDime Pro

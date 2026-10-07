@@ -8,6 +8,15 @@
  * that it does not represent a government. Play rejected the first review on
  * 6 Oct 2026 for exactly that: the app named BLS and USDA but linked neither.
  *
+ * Play rejected the second review on 7 Oct 2026 for a "broken or inaccessible
+ * source link". The links worked in a desktop browser, but www.bls.gov sits
+ * behind a bot filter that answers automated visitors, headless browsers
+ * included, with a 403 "Access Denied" page, and Play's check is automated.
+ * data.bls.gov is the same agency's data site without that filter, and it
+ * serves the data itself rather than a page about it, so the BLS links point
+ * there. DataSourcesTest keeps www.bls.gov and download.bls.gov out, and
+ * scripts/check_source_links.py fetches every link the way a bot would.
+ *
  * The Sources screen reads from here, and DataSourcesTest holds the store
  * description to the same links and the same statement, so the app and the
  * listing cannot drift apart. Android only for now: the iOS app names the same
@@ -33,7 +42,8 @@ object DataSources {
     val AVERAGE_PRICES = DataSource(
         title = "Average Price Data",
         publisher = "US Bureau of Labor Statistics",
-        url = "https://www.bls.gov/cpi/factsheets/average-prices.htm",
+        // The Average Price Data series list: bread, eggs, milk and the rest, by series id.
+        url = "https://data.bls.gov/toppicks?survey=ap",
         isGovernment = true,
     )
 
@@ -47,7 +57,8 @@ object DataSources {
     val CONSUMER_PRICE_INDEX = DataSource(
         title = "Consumer Price Index",
         publisher = "US Bureau of Labor Statistics",
-        url = "https://www.bls.gov/cpi/",
+        // The one CPI series the app uses: fruits and vegetables, US city average, CUUR0000SAF113.
+        url = "https://data.bls.gov/timeseries/CUUR0000SAF113",
         isGovernment = true,
     )
 
