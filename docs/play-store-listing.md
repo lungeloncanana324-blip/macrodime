@@ -61,7 +61,7 @@ claims to be "best".
 ```
 MacroDime joins two things that are usually decided separately: what your body needs, and what you can afford.
 
-Your targets come from published science. Basal metabolic rate by Mifflin-St Jeor, standard activity multipliers, a 20% deficit for fat loss or an 8% surplus for lean gaining, protein held at 2.0 g per kg while cutting, and fat no lower than 20% of calories. Every override the engine makes to protect those rules is reported rather than hidden.
+How your targets are set: the Mifflin-St Jeor equation for resting energy, times an activity multiplier from 1.2 to 1.725, then MacroDime's own rules: a 20% deficit for fat loss or an 8% surplus for lean gaining, protein at 2.0 g per kg while cutting, and fat no lower than 20% of calories. Any override made to protect those rules is reported, not hidden.
 
 Your week is planned for you. When you finish setting up, MacroDime builds seven days of simple meals for your calories, protein, food budget and diet, with a shopping list to match. Change anything you like; any day you clear can be planned again with one tap.
 
@@ -71,19 +71,21 @@ Sources, and a disclaimer
 
 MacroDime is an independent app. It does not represent any government or government agency, and it is not affiliated with or endorsed by any organisation listed here. It uses figures these organisations publish for anyone to use, and each link opens the original.
 
-Food prices: Average Price Data, US Bureau of Labor Statistics
+All five sources on the app's Sources screen, in the same order:
+
+Food prices
+Average Price Data, US Bureau of Labor Statistics
 https://data.bls.gov/toppicks?survey=ap
-
-Fruit, vegetable and bean prices: USDA Economic Research Service
+Fruit and Vegetable Prices, USDA Economic Research Service
 https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices
-
-Price adjustment: Consumer Price Index, US Bureau of Labor Statistics
+Consumer Price Index, US Bureau of Labor Statistics
 https://data.bls.gov/timeseries/CUUR0000SAF113
 
-Nutrition for whole foods: FoodData Central, US Department of Agriculture
+Nutrition and BMI
+FoodData Central, US Department of Agriculture
 https://fdc.nal.usda.gov/
-
-The app shows the same links on its Sources screen, in Settings and in the menu of the subscription screen.
+Body mass index (BMI), World Health Organization
+https://www.who.int/data/gho/data/themes/topics/topic-details/GHO/body-mass-index
 
 The low-cost swap
 
@@ -215,6 +217,33 @@ download.bls.gov, and `scripts/check_source_links.py` fetches every link in
 GitHub's servers on every change and weekly). Run it before pasting any
 description that adds a link. It passes the new links and fails the rejected
 description on exactly the two BLS links.
+
+**Third rejection, 7 October 2026: "Insufficient Sources Provided"**, with an
+in-app screenshot as evidence: the description "makes it seem like there are
+more than one source of information used without listing all of them". The
+description listed the four government sources, but the app's Sources screen
+lists five: the WHO's BMI bands as well. `DataSourcesTest` only required the
+government ones in the description, which is how the gap got through. The
+description also said the targets "come from published science" without
+naming any. Fixed in the description only (the app is unchanged, so version
+code 9 stays):
+
+- The sources section lists all five sources exactly as the Sources screen
+  does: same names and publishers, same two groups (Food prices; Nutrition and
+  BMI), same order, and the line "All five sources on the app's Sources
+  screen, in the same order".
+- "Published science" is gone. The targets paragraph names the Mifflin-St Jeor
+  equation as the method and calls the deficit, protein and fat figures what
+  they are: MacroDime's own rules. The equation is not added as a linked
+  source: the paper (Am J Clin Nutr 1990, PMID 2305711) is on PubMed, Europe
+  PMC and the journal's site, and all three answer automated visitors with a
+  403 or a bot check, which would repeat the second rejection.
+
+To do: paste the full description above into Store listing again, then send
+the changes for review (no new bundle). Guards: `DataSourcesTest` now fails if
+any source on the Sources screen is missing from the description (name,
+publisher and link together), if the description links anything else, if the
+stated count is wrong, or if it uses wording such as "published science".
 
 ### Content rating questionnaire (IARC)
 
